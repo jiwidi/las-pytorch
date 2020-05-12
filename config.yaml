@@ -1,0 +1,40 @@
+data:
+    name: mozilla
+    vocab: data/mozilla/vocabulary.tsv
+    batch_size: 16
+    text: character
+    train: data/mozilla/processed/train_processed.tsv
+    test: data/mozilla/processed/test_processed.tsv
+    dev: data/mozilla/processed/dev_processed.tsv
+    short_first: False
+    num_mel_bins: 40
+    left_frames: 0
+    right_frames: 0
+    skip_frames: 0
+    num_works: 4
+model:
+    encoder:
+        hidden_size: 512
+        num_layers: 8
+        n_layers: 2
+        dropout: 0.0
+        bidirectional: True
+    decoder:
+        embed_size: 256
+        hidden_size: 1024
+        n_layers: 2
+        bidirectional: True
+training:
+    optimizer: 'adam'
+    lr: 0.01
+    weight_decay: 0.0
+    momentum: 0.0
+    epochs: 500
+    half_lr: 0.0
+    early_stop: 0.0
+    max_norm: 5
+    save_folder: 'checkpoints/'
+    checkpoint: 0
+    continue_from: False
+    tensorboard: True
+    print_freq: 1
