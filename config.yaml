@@ -15,14 +15,13 @@ data:
 model:
     encoder:
         hidden_size: 512
-        num_layers: 8
-        n_layers: 2
+        num_layers: 1
         dropout: 0.0
         bidirectional: True
     decoder:
         embed_size: 256
         hidden_size: 1024
-        n_layers: 2
+        num_layers: 1
         bidirectional: True
 training:
     optimizer: 'adam'
@@ -37,4 +36,4 @@ training:
     checkpoint: 0
     continue_from: False
     tensorboard: True
-    print_freq: 1
+    print_freq: 50
