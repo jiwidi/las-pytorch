@@ -182,8 +182,8 @@ class Solver(object):
 
             #Visualizing iteration loss using tensorboard
             if (self.tensorboard):
-                self.writer.add_scalar('Iteration-Loss/train', loss, n_iter)
+                self.writer.add_scalar('Iteration-Loss/train', loss, i)
         #Visualizing epoch loss using tensorboard
         if (self.tensorboard):
-                self.writer.add_scalar('Epoch-Loss/train', total_loss / (i + 1), n_iter)
+                self.writer.add_scalar('Epoch-Loss/train', total_loss / (i + 1), epoch)
         return total_loss / (i + 1)
