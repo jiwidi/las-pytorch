@@ -1,6 +1,6 @@
 import os
 import time
-
+from torch.utils.tensorboard import SummaryWriter
 import torch
 
 
@@ -27,6 +27,9 @@ class Solver(object):
         # self.model_path = args.model_path
         # logging
         self.print_freq = params['print_freq']
+        self.tensorboard = params['tensorboard']
+        if (self.tensorboard):
+            self.writer = SummaryWriter()
         # # visualizing loss using visdom
         # self.tr_loss = torch.Tensor(self.epochs)
         # self.cv_loss = torch.Tensor(self.epochs)
@@ -149,14 +152,6 @@ class Solver(object):
 
         data_loader = self.tr_loader if not cross_valid else self.cv_loader
 
-        # visualizing loss using visdom
-        # if self.visdom and not cross_valid:
-        #     vis_opts_epoch = dict(title=self.visdom_id + " epoch " + str(epoch),
-        #                           ylabel='Loss', xlabel='Epoch')
-        #     vis_window_epoch = None
-        #     vis_iters = torch.arange(1, len(data_loader) + 1)
-        #     vis_iters_loss = torch.Tensor(len(data_loader))
-
         for i, (data) in enumerate(data_loader):
             utt_ids, feature, label = data
             sample_id = data[0]
@@ -167,10 +162,8 @@ class Solver(object):
             padded_target = t_targets['targets'].to(self.device)
             target_length = t_targets['targets_length'].to(self.device)
 
-            # padded_input = padded_input.cuda()
-            # input_lengths = input_lengths.cuda()
-            # padded_target = padded_target.cuda()
             loss = self.model(padded_input, inputs_length, padded_target)
+
             if not cross_valid:
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -187,17 +180,10 @@ class Solver(object):
                           loss.item(), 1000 * (time.time() - start) / (i + 1)),
                       flush=True)
 
-            # # visualizing loss using visdom
-            # if self.visdom and not cross_valid:
-            #     vis_iters_loss[i] = loss.item()
-            #     if i % self.print_freq == 0:
-            #         x_axis = vis_iters[:i+1]
-            #         y_axis = vis_iters_loss[:i+1]
-            #         if vis_window_epoch is None:
-            #             vis_window_epoch = self.vis.line(X=x_axis, Y=y_axis,
-            #                                              opts=vis_opts_epoch)
-            #         else:
-            #             self.vis.line(X=x_axis, Y=y_axis, win=vis_window_epoch,
-            #                           update='replace')
-
+            #Visualizing iteration loss using tensorboard
+            if (self.tensorboard):
+                self.writer.add_scalar('Iteration-Loss/train', loss, n_iter)
+        #Visualizing epoch loss using tensorboard
+        if (self.tensorboard):
+                self.writer.add_scalar('Epoch-Loss/train', total_loss / (i + 1), n_iter)
         return total_loss / (i + 1)
