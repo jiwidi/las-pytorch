@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pdb
 
+
 class DotProductAttention(nn.Module):
     r"""Dot product attention.
     Given a set of vector values, and a vector query, attention is a technique
@@ -29,8 +30,9 @@ class DotProductAttention(nn.Module):
         input_lengths = values.size(1)
         # (N, To, H) * (N, H, Ti) -> (N, To, Ti)
         attention_scores = torch.bmm(queries, values.transpose(1, 2))
-        attention_distribution = F.softmax(
-            attention_scores.view(-1, input_lengths), dim=1).view(batch_size, -1, input_lengths)
+        attention_distribution = F.softmax(attention_scores.view(-1, input_lengths), dim=1).view(
+            batch_size, -1, input_lengths
+        )
         # (N, To, Ti) * (N, Ti, H) -> (N, To, H)
         attention_output = torch.bmm(attention_distribution, values)
         # # concat -> (N, To, 2*H)

@@ -11,8 +11,7 @@ class Decoder(nn.Module):
     """
     """
 
-    def __init__(self, vocab_size, embedding_dim, sos_id, eos_id, hidden_size,
-                 num_layers, bidirectional_encoder=True):
+    def __init__(self, vocab_size, embedding_dim, sos_id, eos_id, hidden_size, num_layers, bidirectional_encoder=True):
         super(Decoder, self).__init__()
         # Hyper parameters
         # embedding + output
@@ -23,21 +22,20 @@ class Decoder(nn.Module):
         # rnn
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.bidirectional_encoder = int(bidirectional_encoder)+1  # useless now
+        self.bidirectional_encoder = int(bidirectional_encoder) + 1  # useless now
         self.encoder_hidden_size = hidden_size  # must be equal now
         # Components
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.rnn = nn.ModuleList()
-        self.rnn += [nn.LSTMCell(self.embedding_dim +
-                                 self.encoder_hidden_size, self.hidden_size)]
+        self.rnn += [nn.LSTMCell(self.embedding_dim + self.encoder_hidden_size, self.hidden_size)]
         for l in range(1, self.num_layers):
             self.rnn += [nn.LSTMCell(self.hidden_size, self.hidden_size)]
         self.attention = DotProductAttention()
         self.mlp = nn.Sequential(
-            nn.Linear(self.encoder_hidden_size + self.hidden_size,
-                      self.hidden_size),
+            nn.Linear(self.encoder_hidden_size + self.hidden_size, self.hidden_size),
             nn.Tanh(),
-            nn.Linear(self.hidden_size, self.vocab_size))
+            nn.Linear(self.hidden_size, self.vocab_size),
+        )
 
     def zero_state(self, encoder_padded_outputs, H=None):
         N = encoder_padded_outputs.size(0)
@@ -77,8 +75,7 @@ class Decoder(nn.Module):
         for l in range(1, self.num_layers):
             h_list.append(self.zero_state(encoder_padded_outputs))
             c_list.append(self.zero_state(encoder_padded_outputs))
-        att_c = self.zero_state(encoder_padded_outputs,
-                                H=encoder_padded_outputs.size(2))
+        att_c = self.zero_state(encoder_padded_outputs, H=encoder_padded_outputs.size(2))
         y_all = []
 
         # **********LAS: 1. decoder rnn 2. attention 3. concate and MLP
@@ -86,15 +83,12 @@ class Decoder(nn.Module):
         for t in range(output_length):
             # step 1. decoder RNN: s_i = RNN(s_i−1,y_i−1,c_i−1)
             rnn_input = torch.cat((embedded[:, t, :], att_c), dim=1)
-            h_list[0], c_list[0] = self.rnn[0](
-                rnn_input, (h_list[0], c_list[0]))
+            h_list[0], c_list[0] = self.rnn[0](rnn_input, (h_list[0], c_list[0]))
             for l in range(1, self.num_layers):
-                h_list[l], c_list[l] = self.rnn[l](
-                    h_list[l-1], (h_list[l], c_list[l]))
+                h_list[l], c_list[l] = self.rnn[l](h_list[l - 1], (h_list[l], c_list[l]))
             rnn_output = h_list[-1]  # below unsqueeze: (N x H) -> (N x 1 x H)
             # step 2. attention: c_i = AttentionContext(s_i,h)
-            att_c, att_w = self.attention(rnn_output.unsqueeze(dim=1),
-                                          encoder_padded_outputs)
+            att_c, att_w = self.attention(rnn_output.unsqueeze(dim=1), encoder_padded_outputs)
             att_c = att_c.squeeze(dim=1)
             # step 3. concate s_i and c_i, and input to MLP
             mlp_input = torch.cat((rnn_output, att_c), dim=1)
@@ -105,9 +99,7 @@ class Decoder(nn.Module):
         # **********Cross Entropy Loss
         # F.cross_entropy = NLL(log_softmax(input), target))
         y_all = y_all.view(batch_size * output_length, self.vocab_size)
-        ce_loss = F.cross_entropy(y_all, ys_out_pad.view(-1),
-                                  ignore_index=IGNORE_ID,
-                                  reduction='elementwise_mean')
+        ce_loss = F.cross_entropy(y_all, ys_out_pad.view(-1), ignore_index=IGNORE_ID, reduction="elementwise_mean")
         # TODO: should minus 1 here ?
         # ce_loss *= (np.mean([len(y) for y in ys_in]) - 1)
         # print("ys_in\n", ys_in)
@@ -170,14 +162,12 @@ class Decoder(nn.Module):
         for l in range(1, self.num_layers):
             h_list.append(self.zero_state(encoder_outputs.unsqueeze(0)))
             c_list.append(self.zero_state(encoder_outputs.unsqueeze(0)))
-        att_c = self.zero_state(encoder_outputs.unsqueeze(0),
-                                H=encoder_outputs.unsqueeze(0).size(2))
+        att_c = self.zero_state(encoder_outputs.unsqueeze(0), H=encoder_outputs.unsqueeze(0).size(2))
         # prepare sos
         y = self.sos_id
         vy = encoder_outputs.new_zeros(1).long()
 
-        hyp = {'score': 0.0, 'yseq': [y], 'c_prev': c_list, 'h_prev': h_list,
-               'a_prev': att_c}
+        hyp = {"score": 0.0, "yseq": [y], "c_prev": c_list, "h_prev": h_list, "a_prev": att_c}
         hyps = [hyp]
         ended_hyps = []
 
@@ -185,59 +175,52 @@ class Decoder(nn.Module):
             hyps_best_kept = []
             for hyp in hyps:
                 # vy.unsqueeze(1)
-                vy[0] = hyp['yseq'][i]
+                vy[0] = hyp["yseq"][i]
                 embedded = self.embedding(vy)
                 # embedded.unsqueeze(0)
                 # step 1. decoder RNN: s_i = RNN(s_i−1,y_i−1,c_i−1)
-                rnn_input = torch.cat((embedded, hyp['a_prev']), dim=1)
-                h_list[0], c_list[0] = self.rnn[0](
-                    rnn_input, (hyp['h_prev'][0], hyp['c_prev'][0]))
+                rnn_input = torch.cat((embedded, hyp["a_prev"]), dim=1)
+                h_list[0], c_list[0] = self.rnn[0](rnn_input, (hyp["h_prev"][0], hyp["c_prev"][0]))
                 for l in range(1, self.num_layers):
-                    h_list[l], c_list[l] = self.rnn[l](
-                        h_list[l-1], (hyp['h_prev'][l], hyp['c_prev'][l]))
+                    h_list[l], c_list[l] = self.rnn[l](h_list[l - 1], (hyp["h_prev"][l], hyp["c_prev"][l]))
                 rnn_output = h_list[-1]
                 # step 2. attention: c_i = AttentionContext(s_i,h)
                 # below unsqueeze: (N x H) -> (N x 1 x H)
-                att_c, att_w = self.attention(rnn_output.unsqueeze(dim=1),
-                                              encoder_outputs.unsqueeze(0))
+                att_c, att_w = self.attention(rnn_output.unsqueeze(dim=1), encoder_outputs.unsqueeze(0))
                 att_c = att_c.squeeze(dim=1)
                 # step 3. concate s_i and c_i, and input to MLP
                 mlp_input = torch.cat((rnn_output, att_c), dim=1)
                 predicted_y_t = self.mlp(mlp_input)
                 local_scores = F.log_softmax(predicted_y_t, dim=1)
                 # topk scores
-                local_best_scores, local_best_ids = torch.topk(
-                    local_scores, beam, dim=1)
+                local_best_scores, local_best_ids = torch.topk(local_scores, beam, dim=1)
 
                 for j in range(beam):
                     new_hyp = {}
-                    new_hyp['h_prev'] = h_list[:]
-                    new_hyp['c_prev'] = c_list[:]
-                    new_hyp['a_prev'] = att_c[:]
-                    new_hyp['score'] = hyp['score'] + local_best_scores[0, j]
-                    new_hyp['yseq'] = [0] * (1 + len(hyp['yseq']))
-                    new_hyp['yseq'][:len(hyp['yseq'])] = hyp['yseq']
-                    new_hyp['yseq'][len(hyp['yseq'])] = int(
-                        local_best_ids[0, j])
+                    new_hyp["h_prev"] = h_list[:]
+                    new_hyp["c_prev"] = c_list[:]
+                    new_hyp["a_prev"] = att_c[:]
+                    new_hyp["score"] = hyp["score"] + local_best_scores[0, j]
+                    new_hyp["yseq"] = [0] * (1 + len(hyp["yseq"]))
+                    new_hyp["yseq"][: len(hyp["yseq"])] = hyp["yseq"]
+                    new_hyp["yseq"][len(hyp["yseq"])] = int(local_best_ids[0, j])
                     # will be (2 x beam) hyps at most
                     hyps_best_kept.append(new_hyp)
 
-                hyps_best_kept = sorted(hyps_best_kept,
-                                        key=lambda x: x['score'],
-                                        reverse=True)[:beam]
+                hyps_best_kept = sorted(hyps_best_kept, key=lambda x: x["score"], reverse=True)[:beam]
             # end for hyp in hyps
             hyps = hyps_best_kept
 
             # add eos in the final loop to avoid that there are no ended hyps
             if i == maxlen - 1:
                 for hyp in hyps:
-                    hyp['yseq'].append(self.eos_id)
+                    hyp["yseq"].append(self.eos_id)
 
             # add ended hypothes to a final list, and removed them from current hypothes
             # (this will be a probmlem, number of hyps < beam)
             remained_hyps = []
             for hyp in hyps:
-                if hyp['yseq'][-1] == self.eos_id:
+                if hyp["yseq"][-1] == self.eos_id:
                     # hyp['score'] += (i + 1) * penalty
                     ended_hyps.append(hyp)
                 else:
@@ -245,15 +228,13 @@ class Decoder(nn.Module):
 
             hyps = remained_hyps
             if len(hyps) > 0:
-                print('remeined hypothes: ' + str(len(hyps)))
+                print("remeined hypothes: " + str(len(hyps)))
             else:
-                print('no hypothesis. Finish decoding.')
+                print("no hypothesis. Finish decoding.")
                 break
 
             for hyp in hyps:
-                print('hypo: ' + ''.join([char_list[int(x)]
-                                          for x in hyp['yseq'][1:]]))
+                print("hypo: " + "".join([char_list[int(x)] for x in hyp["yseq"][1:]]))
         # end for i in range(maxlen)
-        nbest_hyps = sorted(ended_hyps, key=lambda x: x['score'], reverse=True)[
-            :min(len(ended_hyps), nbest)]
+        nbest_hyps = sorted(ended_hyps, key=lambda x: x["score"], reverse=True)[: min(len(ended_hyps), nbest)]
         return nbest_hyps

@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
 
-from .decoder import Decoder
-from .encoder import Encoder
-
 
 class Seq2Seq(nn.Module):
     """Sequence-to-Sequence architecture with configurable encoder and decoder.
@@ -35,9 +32,7 @@ class Seq2Seq(nn.Module):
             nbest_hyps:
         """
         encoder_outputs, _ = self.encoder(input.unsqueeze(0), input_length)
-        nbest_hyps = self.decoder.recognize_beam(encoder_outputs[0],
-                                                 char_list,
-                                                 args)
+        nbest_hyps = self.decoder.recognize_beam(encoder_outputs[0], char_list, args)
         return nbest_hyps
 
     # @classmethod
@@ -72,25 +67,25 @@ class Seq2Seq(nn.Module):
     def serialize(model, optimizer, epoch, tr_loss=None, cv_loss=None):
         state = {
             # encoder
-            'einput': model.encoder.input_size,
-            'ehidden': model.encoder.hidden_size,
-            'elayer': model.encoder.num_layers,
-            'edropout': model.encoder.dropout,
-            'ebidirectional': model.encoder.bidirectional,
-            'etype': model.encoder.rnn_type,
+            "einput": model.encoder.input_size,
+            "ehidden": model.encoder.hidden_size,
+            "elayer": model.encoder.num_layers,
+            "edropout": model.encoder.dropout,
+            "ebidirectional": model.encoder.bidirectional,
+            "etype": model.encoder.rnn_type,
             # decoder
-            'dvocab_size': model.decoder.vocab_size,
-            'dembed': model.decoder.embedding_dim,
-            'dsos_id': model.decoder.sos_id,
-            'deos_id': model.decoder.eos_id,
-            'dhidden': model.decoder.hidden_size,
-            'dlayer': model.decoder.num_layers,
+            "dvocab_size": model.decoder.vocab_size,
+            "dembed": model.decoder.embedding_dim,
+            "dsos_id": model.decoder.sos_id,
+            "deos_id": model.decoder.eos_id,
+            "dhidden": model.decoder.hidden_size,
+            "dlayer": model.decoder.num_layers,
             # state
-            'state_dict': model.state_dict(),
-            'optim_dict': optimizer.state_dict(),
-            'epoch': epoch
+            "state_dict": model.state_dict(),
+            "optim_dict": optimizer.state_dict(),
+            "epoch": epoch,
         }
         if tr_loss is not None:
-            state['tr_loss'] = tr_loss
-            state['cv_loss'] = cv_loss
+            state["tr_loss"] = tr_loss
+            state["cv_loss"] = cv_loss
         return state

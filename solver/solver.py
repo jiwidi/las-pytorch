@@ -13,7 +13,8 @@ class Solver(object):
         self.cv_loader = data['cv_loader']
         self.model = model
         self.optimizer = optimizer
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu")
 
         # Training config
         self.epochs = params['epochs']
@@ -24,7 +25,6 @@ class Solver(object):
         self.save_folder = params['save_folder']
         self.checkpoint = params['checkpoint']
         self.continue_from = params['continue_from']
-        # self.model_path = args.model_path
         # logging
         self.print_freq = params['print_freq']
         self.tensorboard = params['tensorboard']
@@ -32,16 +32,6 @@ class Solver(object):
         #
         self.tr_loss = torch.Tensor(self.epochs)
         self.cv_loss = torch.Tensor(self.epochs)
-        # self.visdom = args.visdom
-        # self.visdom_id = args.visdom_id
-        # if self.visdom:
-        #     from visdom import Visdom
-        #     self.vis = Visdom(env=self.visdom_id)
-        #     self.vis_opts = dict(title=self.visdom_id,
-        #                          ylabel='Loss', xlabel='Epoch',
-        #                          legend=['train loss', 'cv loss'])
-        #     self.vis_window = None
-        #     self.vis_epochs = torch.arange(1, self.epochs + 1)
 
         self._reset()
 
@@ -163,12 +153,13 @@ class Solver(object):
                           loss.item(), 1000 * (time.time() - start) / (i + 1)),
                       flush=True)
 
-            #Visualizing iteration loss using tensorboard
+            # Visualizing iteration loss using tensorboard
             if (self.tensorboard):
                 mode = 'test' if cross_valid else 'train'
                 self.writer.add_scalar(f'Iteration-Loss/{mode}', loss, i)
-        #Visualizing epoch loss using tensorboard
+        # Visualizing epoch loss using tensorboard
         if (self.tensorboard):
-                mode = 'test' if cross_valid else 'train'
-                self.writer.add_scalar(f'Epoch-Loss/{mode}', total_loss / (i + 1), epoch)
+            mode = 'test' if cross_valid else 'train'
+            self.writer.add_scalar(
+                f'Epoch-Loss/{mode}', total_loss / (i + 1), epoch)
         return total_loss / (i + 1)
