@@ -30,6 +30,15 @@ def clean_sentence(sentence):
     sentence = re.sub("[^\w\d'\s]+",'',sentence).lower().strip() #Remove every punctuation except '
     return sentence
 
+ignore_files = ['data/mozilla/mp3/common_voice_en_19411965.mp3','data/mozilla/mp3/common_voice_en_19411966.mp3',
+                'data/mozilla/mp3/common_voice_en_19411967.mp3','data/mozilla/mp3/common_voice_en_19411968.mp3',
+                'data/mozilla/mp3/common_voice_en_19411974.mp3','data/mozilla/mp3/common_voice_en_19411975.mp3',
+                'data/mozilla/mp3/common_voice_en_19411976.mp3','data/mozilla/mp3/common_voice_en_19411977.mp3',
+                'data/mozilla/mp3/common_voice_en_19411977.mp3','data/mozilla/mp3/common_voice_en_19411978.mp3',
+                'data/mozilla/mp3/common_voice_en_19411984.mp3','data/mozilla/mp3/common_voice_en_19411985.mp3',
+                'data/mozilla/mp3/common_voice_en_19411986.mp3','data/mozilla/mp3/common_voice_en_19411987.mp3',
+                'data/mozilla/mp3/common_voice_en_19411988.mp3','data/mozilla/mp3/common_voice_en_19411989.mp3',
+                'data/mozilla/mp3/common_voice_en_19411990.mp3','data/mozilla/mp3/common_voice_en_19411992.mp3']
 vocab = vocabulary()
 for file in filelist:
     print(f"Processing file {file}")
@@ -46,6 +55,7 @@ for file in filelist:
 
     #Fix file paths
     tsv['path'] = 'data/mozilla/mp3/' + tsv['path'].astype(str)
+    tsv = tsv[~tsv['path'].isin(ignore_files)]
     tsv.to_csv(filename,sep='\t',index=False)
 vocab.to_file('data/mozilla/')
 

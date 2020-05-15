@@ -8,11 +8,23 @@ import yaml
 import enlighten
 import pdb
 import torch
+import random
+import numpy as np
+
+
+SEED = 17
+random.seed(SEED)
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.cuda.set_device(device)
 
 def main(params):
     # Construct Solver
     # data
     train_dataset = AudioDataset(params['data'], 'train')
+    #Verify data
     test_dataset = AudioDataset(params['data'], 'test')
     train_loader = AudioDataLoader(train_dataset).loader
     test_loader = AudioDataLoader(test_dataset).loader
@@ -24,14 +36,15 @@ def main(params):
     data = {'tr_loader': train_loader, 'cv_loader': test_loader}
     # model
     encoder = Encoder(input_size=params['data']['num_mel_bins'], hidden_size=params['model']['encoder']['hidden_size'],
-                  num_layers=params['model']['encoder']['num_layers'], dropout=params['model']['encoder']['dropout'], bidirectional=params['model']['encoder']['bidirectional']).to(device)
+                num_layers=params['model']['encoder']['num_layers'], dropout=params['model']['encoder']['dropout'], bidirectional=params['model']['encoder']['bidirectional']).to(device)
 
     decoder = Decoder(vocab_size=512, embedding_dim=params['model']['decoder']['embed_size'],
                     sos_id=sos_id, eos_id=eos_id, hidden_size=params['model']['decoder']['hidden_size'],
                     num_layers=params['model']['decoder']['num_layers'], bidirectional_encoder=params['model']['decoder']['bidirectional'])
     model = Seq2Seq(encoder, decoder)
-    print(model)
-    model.cuda()
+
+
+
     # optimizer
     if params['training']['optimizer'] == 'sgd':
         optimizier = torch.optim.SGD(model.parameters(),
@@ -46,6 +59,9 @@ def main(params):
         print("Not support optimizer")
         return
 
+    #Some model info
+    print(model)
+    model.cuda()
     # solver
     solver = Solver(data, model, optimizier, params['training'])
     solver.train()

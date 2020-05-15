@@ -1,0 +1,7 @@
+torchaudio==0.5
+pydub==0.24.0
+torch==1.5.0
+enlighten==1.5.1
+pandas==1.0.3
+numpy==1.18.1
+PyYAML==5.3.1

@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torchaudio as ta
 from torch.utils.data import Dataset, DataLoader
+import enlighten
 
 PAD = 0
 EOS = 1
@@ -109,6 +110,16 @@ class AudioDataset(Dataset):
 
         self.lengths = len(self.file_list)
 
+    def verify_integrity_reads(self):
+        pbar = enlighten.Counter(total=len(self.file_list), desc='Basic', unit='ticks')
+        print("Verifying data integrity")
+        for u in range(len(self.file_list)):
+            utt_id, path = self.file_list[u]
+            try:
+                wavform, sample_frequency = ta.load(path)
+            except:
+                print(f"failed reading file at path {path} with index {u} and id {utt_id}")
+            pbar.update()
 
     def __getitem__(self, index):
         utt_id, path = self.file_list[index]

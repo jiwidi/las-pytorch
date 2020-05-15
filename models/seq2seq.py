@@ -40,37 +40,37 @@ class Seq2Seq(nn.Module):
                                                  args)
         return nbest_hyps
 
-    @classmethod
-    def load_model(cls, path):
-        # Load to CPU
-        package = torch.load(path, map_location=lambda storage, loc: storage)
-        model = cls.load_model_from_package(package)
-        return model
+    # @classmethod
+    # def load_model(cls, path):
+    #     # Load to CPU
+    #     package = torch.load(path, map_location=lambda storage, loc: storage)
+    #     model = cls.load_model_from_package(package)
+    #     return model
 
-    @classmethod
-    def load_model_from_package(cls, package):
-        encoder = Encoder(package['einput'],
-                          package['ehidden'],
-                          package['elayer'],
-                          dropout=package['edropout'],
-                          bidirectional=package['ebidirectional'],
-                          rnn_type=package['etype'])
-        decoder = Decoder(package['dvocab_size'],
-                          package['dembed'],
-                          package['dsos_id'],
-                          package['deos_id'],
-                          package['dhidden'],
-                          package['dlayer'],
-                          bidirectional_encoder=package['ebidirectional']
-                          )
-        encoder.flatten_parameters()
-        model = cls(encoder, decoder)
-        model.load_state_dict(package['state_dict'])
-        return model
+    # @classmethod
+    # def load_model_from_package(cls, package):
+    #     encoder = Encoder(package['einput'],
+    #                       package['ehidden'],
+    #                       package['elayer'],
+    #                       dropout=package['edropout'],
+    #                       bidirectional=package['ebidirectional'],
+    #                       rnn_type=package['etype'])
+    #     decoder = Decoder(package['dvocab_size'],
+    #                       package['dembed'],
+    #                       package['dsos_id'],
+    #                       package['deos_id'],
+    #                       package['dhidden'],
+    #                       package['dlayer'],
+    #                       bidirectional_encoder=package['ebidirectional']
+    #                       )
+    #     encoder.flatten_parameters()
+    #     model = cls(encoder, decoder)
+    #     model.load_state_dict(package['state_dict'])
+    #     return model
 
     @staticmethod
     def serialize(model, optimizer, epoch, tr_loss=None, cv_loss=None):
-        package = {
+        state = {
             # encoder
             'einput': model.encoder.input_size,
             'ehidden': model.encoder.hidden_size,
@@ -91,6 +91,6 @@ class Seq2Seq(nn.Module):
             'epoch': epoch
         }
         if tr_loss is not None:
-            package['tr_loss'] = tr_loss
-            package['cv_loss'] = cv_loss
-        return package
+            state['tr_loss'] = tr_loss
+            state['cv_loss'] = cv_loss
+        return state

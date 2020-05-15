@@ -26,14 +26,14 @@ model:
 training:
     optimizer: 'adam'
     lr: 0.01
-    weight_decay: 0.0
+    weight_decay: 0.000
     momentum: 0.0
     epochs: 500
     half_lr: 0.0
     early_stop: 0.0
     max_norm: 5
-    save_folder: 'checkpoints/'
-    checkpoint: 0
+    save_folder: 'runs/'
+    checkpoint: True
     continue_from: False
     tensorboard: True
     print_freq: 500
