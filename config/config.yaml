@@ -1,28 +1,37 @@
 data:
     name: mozilla
     vocab: data/mozilla/vocabulary.tsv
-    batch_size: 16
+    batch_size: 2
     text: character
     train: data/mozilla/processed/train_processed.tsv
     test: data/mozilla/processed/test_processed.tsv
     dev: data/mozilla/processed/dev_processed.tsv
     short_first: False
     num_mel_bins: 40
-    left_frames: 0
-    right_frames: 0
-    skip_frames: 0
-    num_works: 4
+    num_works: 1
+    vocab_size: 42
 model:
-    encoder:
-        hidden_size: 1024
-        num_layers: 8
+    listener:
+        input_feature_dim: 40
+        hidden_size: 2
+        num_layers: 1
         dropout: 0.0
         bidirectional: True
-    decoder:
-        embed_size: 512
-        hidden_size: 2048
-        num_layers: 8
+        rnn_unit: "LSTM"
+        use_gpu: True
+    speller:
+        hidden_size: 4
+        num_layers: 1
         bidirectional: True
+        rnn_unit: "LSTM"
+        vocab_size: 42                             # 61 phonemes + 2 for <sos> & <eos>
+        multi_head: 1                               # Number of heads for multi-head attention
+        decode_mode: 1                              # Decoding mode, 0 : feed char distribution to next timestep, 1: feed argmax, 2: feed sampled vector
+        use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
+        mlp_dim_in_attention: 128                   #
+        mlp_activate_in_attention: 'relu'           #
+        listener_hidden_size: 2
+        max_label_len: 2463
 training:
     optimizer: 'adam'
     lr: 0.01
@@ -37,3 +46,7 @@ training:
     continue_from: False
     tensorboard: True
     print_freq: 500
+    label_smoothing: 0.1
+    tf_rate_upperbound: 0.9                    # teacher forcing rate during training will be linearly
+    tf_rate_lowerbound: 0.5                    # decaying from upperbound to lower bound for each epoch
+    tf_decay_step: 100000

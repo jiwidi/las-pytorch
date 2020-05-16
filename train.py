@@ -1,87 +1,144 @@
-from data import AudioDataLoader
-from data import AudioDataset
-from models.encoder import Encoder
-from models.decoder import Decoder
-from models.seq2seq import Seq2Seq
-from solver.solver import Solver
-import yaml
-import enlighten
-import pdb
 import torch
-import random
+from torch.autograd import Variable
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions.categorical import Categorical
+from model.las_model import Listener, Speller
+from torch.autograd import Variable
+from data import AudioDataLoader, AudioDataset
+from torch.utils.tensorboard import SummaryWriter
+from solver.solver import batch_iterator
 import numpy as np
+import yaml
+import os
+import random
+import enlighten
+import argparse
+import pdb
 
-
-SEED = 17
-random.seed(SEED)
-torch.manual_seed(SEED)
-np.random.seed(SEED)
-
+# Set cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(device)
+# Tensorboard logging
+# Writer will output to ./runs/ directory by default
+writer = SummaryWriter()
 
+parser = argparse.ArgumentParser(description="Training script for LAS on Librispeech .")
+parser.add_argument(
+    "--config_path", metavar="config_path", type=str, help="Path to config file for training.",
+)
+args = parser.parse_args()
 
-def main(params):
-    # Construct Solver
-    # data
-    train_dataset = AudioDataset(params["data"], "train")
-    # Verify data
-    test_dataset = AudioDataset(params["data"], "test")
-    train_loader = AudioDataLoader(train_dataset).loader
-    test_loader = AudioDataLoader(test_dataset).loader
+# Fix seed
+seed = 17
+np.random.seed(seed)
+torch.manual_seed(seed)
+random.seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(seed)
 
-    vocab = train_dataset.unit2idx
-    sos_id = train_dataset.unit2idx["<SOS>"]
-    eos_id = train_dataset.unit2idx["<EOS>"]
-    vocab_size = len(vocab)
-    data = {"tr_loader": train_loader, "cv_loader": test_loader}
-    # model
-    encoder = Encoder(
-        input_size=params["data"]["num_mel_bins"],
-        hidden_size=params["model"]["encoder"]["hidden_size"],
-        num_layers=params["model"]["encoder"]["num_layers"],
-        dropout=params["model"]["encoder"]["dropout"],
-        bidirectional=params["model"]["encoder"]["bidirectional"],
-    ).to(device)
+print("---------------------------------------")
+print("Loading Config...", flush=True)
+# Load config file for experiment
+config_path = args.config_path
+print("Loading configure file at", config_path)
+with open(config_path, "r") as f:
+    params = yaml.load(f, Loader=yaml.FullLoader)
 
-    decoder = Decoder(
-        vocab_size=512,
-        embedding_dim=params["model"]["decoder"]["embed_size"],
-        sos_id=sos_id,
-        eos_id=eos_id,
-        hidden_size=params["model"]["decoder"]["hidden_size"],
-        num_layers=params["model"]["decoder"]["num_layers"],
-        bidirectional_encoder=params["model"]["decoder"]["bidirectional"],
-    )
-    model = Seq2Seq(encoder, decoder)
+tf_rate_upperbound = params["training"]["tf_rate_upperbound"]
+tf_rate_lowerbound = params["training"]["tf_rate_lowerbound"]
+tf_decay_step = params["training"]["tf_decay_step"]
+epochs = params["training"]["epochs"]
 
-    # optimizer
-    if params["training"]["optimizer"] == "sgd":
-        optimizier = torch.optim.SGD(
-            model.parameters(),
-            lr=params["training"]["lr"],
-            momentum=params["training"]["momentum"],
-            weight_decay=params["training"]["weight_decay"],
+# Load datasets
+print("---------------------------------------")
+print("Processing datasets...", flush=True)
+train_dataset = AudioDataset(params, "train")
+train_loader = AudioDataLoader(train_dataset, num_workers=params["data"]["num_works"]).loader
+dev_dataset = AudioDataset(params, "dev")
+dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
+
+print("---------------------------------------")
+print("Creating model architecture...", flush=True)
+# Create listener and speller
+listener = Listener(**params["model"]["listener"])
+speller = Speller(**params["model"]["speller"])
+
+# Create optimizer
+optimizer = torch.optim.Adam(
+    [{"params": listener.parameters()}, {"params": speller.parameters()}],
+    lr=params["training"]["lr"],
+)
+
+print("---------------------------------------")
+print("Training...", flush=True)
+
+global_step = 0
+for epoch in range(epochs):
+    epoch_step = 0
+    train_loss = []
+    train_ler = []
+    for i, (data) in enumerate(train_loader):
+        print(
+            f"Current Epoch: {epoch} | Epoch step: {epoch_step}/{len(train_loader)}",
+            end="\r",
+            flush=True,
         )
-    elif params["training"]["optimizer"] == "adam":
-        optimizier = torch.optim.Adam(
-            model.parameters(), lr=params["training"]["lr"], weight_decay=params["training"]["weight_decay"]
+        # Adjust LR
+        tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
+            (float(global_step) / tf_decay_step), 1
         )
-    else:
-        print("Not support optimizer")
-        return
 
-    # Some model info
-    print(model)
-    model.cuda()
-    # solver
-    solver = Solver(data, model, optimizier, params["training"])
-    solver.train()
+        inputs = data[1]["inputs"].to(device)
+        labels = data[2]["targets"].to(device)
 
+        # minibatch execution
+        batch_loss, batch_ler = batch_iterator(
+            batch_data=inputs,
+            batch_label=labels,
+            listener=listener,
+            speller=speller,
+            optimizer=optimizer,
+            tf_rate=tf_rate,
+            is_training=True,
+            max_label_len=params["data"]["vocab_size"],
+            label_smoothing=params["training"]["label_smoothing"],
+        )
+        train_loss.append(batch_loss)
+        train_ler.extend(batch_ler)
 
-if __name__ == "__main__":
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    with open("config/config.yaml", "r") as f:
-        params = yaml.load(f, Loader=yaml.FullLoader)
-    print(params)
-    main(params)
+        global_step += 1
+        epoch_step += 1
+        # print(batch_ler)
+
+    train_loss = np.array([sum(train_loss) / len(train_loss)])
+    train_ler = np.array([sum(train_ler) / len(train_ler)])
+    writer.add_scalar("loss/train", train_loss, epoch)
+    writer.add_scalar("cer/train", train_ler, epoch)
+    # Validation
+    val_loss = []
+    val_ler = []
+    for i, (data) in enumerate(train_loader):
+        inputs = data[1]["inputs"].to(device)
+        labels = data[2]["targets"].to(device)
+
+        batch_loss, batch_ler = batch_iterator(
+            batch_data=inputs,
+            batch_label=labels,
+            listener=listener,
+            speller=speller,
+            optimizer=optimizer,
+            tf_rate=tf_rate,
+            is_training=True,
+            max_label_len=params["data"]["vocab_size"],
+            label_smoothing=params["training"]["label_smoothing"],
+        )
+        val_loss.append(batch_loss)
+        val_ler.extend(batch_ler)
+
+    val_loss = np.array([sum(val_loss) / len(val_loss)])
+    val_ler = np.array([sum(val_ler) / len(val_ler)])
+    writer.add_scalar("loss/dev", val_loss, epoch)
+    writer.add_scalar("cer/dev", val_ler, epoch)
+    # writer.add_scalars("cer", {"train": np.array([np.array(batch_ler).mean()])}, global_step)
+    # pdb.set_trace()
+    # print(inputs.size())

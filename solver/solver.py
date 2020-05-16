@@ -1,165 +1,100 @@
-import os
-import time
-from torch.utils.tensorboard import SummaryWriter
 import torch
+import torch.nn as nn
+from torch.autograd import Variable
+import numpy as np
+import editdistance as ed
+import pdb
 
 
-class Solver(object):
-    """
-    """
+# LetterErrorRate function
+# Merge the repeated prediction and calculate editdistance of prediction and ground truth
+def LetterErrorRate(pred_y, true_y):
+    ed_accumalate = []
+    for p, t in zip(pred_y, true_y):
+        compressed_t = [w for w in t if (w != 1 and w != 0)]
 
-    def __init__(self, data, model, optimizer, params):
-        self.tr_loader = data['tr_loader']
-        self.cv_loader = data['cv_loader']
-        self.model = model
-        self.optimizer = optimizer
-        self.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu")
+        compressed_p = []
+        for p_w in p:
+            if p_w == 0:
+                continue
+            if p_w == 1:
+                break
+            compressed_p.append(p_w)
+        ed_accumalate.append(ed.eval(compressed_p, compressed_t) / len(compressed_t))
+    return ed_accumalate
 
-        # Training config
-        self.epochs = params['epochs']
-        self.half_lr = params['half_lr']
-        self.early_stop = params['early_stop']
-        self.max_norm = params['max_norm']
-        # # save and load model
-        self.save_folder = params['save_folder']
-        self.checkpoint = params['checkpoint']
-        self.continue_from = params['continue_from']
-        # logging
-        self.print_freq = params['print_freq']
-        self.tensorboard = params['tensorboard']
-        self.writer = SummaryWriter()
-        #
-        self.tr_loss = torch.Tensor(self.epochs)
-        self.cv_loss = torch.Tensor(self.epochs)
 
-        self._reset()
+def label_smoothing_loss(pred_y, true_y, label_smoothing=0.1):
+    # Self defined loss for label smoothing
+    # pred_y is log-scaled and true_y is one-hot format padded with all zero vector
+    assert pred_y.size() == true_y.size()
+    seq_len = torch.sum(torch.sum(true_y, dim=-1), dim=-1, keepdim=True)
 
-    def _reset(self):
-        # Reset
-        if self.continue_from:
-            print('Loading checkpoint model %s' % self.continue_from)
-            package = torch.load(self.continue_from)
-            self.model.load_state_dict(package['state_dict'])
-            self.optimizer.load_state_dict(package['optim_dict'])
-            self.start_epoch = int(package.get('epoch', 1))
-            try:
-                self.tr_loss[:self.start_epoch] = package['tr_loss'][:self.start_epoch]
-                self.cv_loss[:self.start_epoch] = package['cv_loss'][:self.start_epoch]
-            except:
-                pass
-        else:
-            self.start_epoch = 0
-        # Create save folder
-        os.makedirs(self.save_folder, exist_ok=True)
-        self.prev_val_loss = float("inf")
-        self.best_val_loss = float("inf")
-        self.halving = False
+    # calculate smoothen label, last term ensures padding vector remains all zero
+    class_dim = true_y.size()[-1]
+    smooth_y = ((1.0 - label_smoothing) * true_y + (label_smoothing / class_dim)) * torch.sum(
+        true_y, dim=-1, keepdim=True
+    )
 
-    def train(self):
-        # Train model multi-epoches
-        for epoch in range(self.start_epoch, self.epochs):
-            # Train one epoch
-            print("Training...")
-            self.model.train()  # Turn on BatchNorm & Dropout
-            start = time.time()
-            tr_avg_loss = self._run_one_epoch(epoch)
-            print('-' * 85)
-            print('Train Summary | End of Epoch {0} | Time {1:.2f}s | '
-                  'Train Loss {2:.3f}'.format(
-                      epoch + 1, time.time() - start, tr_avg_loss))
-            print('-' * 85)
+    loss = -torch.mean(torch.sum((torch.sum(smooth_y * pred_y, dim=-1) / seq_len), dim=-1))
 
-            # Save model each epoch
-            if self.checkpoint:
-                file_path = os.path.join(
-                    self.save_folder, 'epoch%d.pth.tar' % (epoch + 1))
-                torch.save(self.model.serialize(self.model, self.optimizer, epoch + 1,
-                                                tr_loss=self.tr_loss[epoch],
-                                                cv_loss=self.cv_loss[epoch]),
-                           file_path)
-                print('Saving checkpoint model to %s' % file_path)
+    return loss
 
-            # Cross validation
-            print('Cross validation...')
-            self.model.eval()  # Turn off Batchnorm & Dropout
-            val_loss = self._run_one_epoch(epoch, cross_valid=True)
-            print('-' * 85)
-            print('Valid Summary | End of Epoch {0} | Time {1:.2f}s | '
-                  'Valid Loss {2:.3f}'.format(
-                      epoch + 1, time.time() - start, val_loss))
-            print('-' * 85)
 
-            # Adjust learning rate (halving)
-            if self.half_lr and val_loss >= self.prev_val_loss:
-                if self.early_stop and self.halving:
-                    print("Already start halving learing rate, it still gets "
-                          "too small imporvement, stop training early.")
-                    break
-                self.halving = True
-            if self.halving:
-                optim_state = self.optimizer.state_dict()
-                optim_state['param_groups'][0]['lr'] = \
-                    optim_state['param_groups'][0]['lr'] / 2.0
-                self.optimizer.load_state_dict(optim_state)
-                print('Learning rate adjusted to: {lr:.6f}'.format(
-                    lr=optim_state['param_groups'][0]['lr']))
-            self.prev_val_loss = val_loss
+def batch_iterator(
+    batch_data,
+    batch_label,
+    listener,
+    speller,
+    optimizer,
+    tf_rate,
+    is_training,
+    max_label_len,
+    label_smoothing,
+    use_gpu=True,
+):
+    label_smoothing = label_smoothing
+    max_label_len = min([batch_label.size()[1], max_label_len])
+    criterion = nn.NLLLoss(ignore_index=0).cuda()
+    optimizer.zero_grad()
+    listner_feature = listener(batch_data)
+    if is_training:
+        raw_pred_seq, _ = speller(
+            listner_feature, ground_truth=batch_label, teacher_force_rate=tf_rate
+        )
+    else:
+        raw_pred_seq, _ = speller(listner_feature, ground_truth=None, teacher_force_rate=0)
 
-            # Save the best model
-            self.tr_loss[epoch] = tr_avg_loss
-            self.cv_loss[epoch] = val_loss
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
-                file_path = os.path.join(
-                    self.save_folder, 'BESTMODEL-epoch%d.pth.tar' % (epoch + 1))
-                torch.save(self.model.serialize(self.model, self.optimizer, epoch + 1,
-                                                tr_loss=self.tr_loss,
-                                                cv_loss=self.cv_loss),
-                           file_path)
-                print("Find better validated model, saving to %s" % file_path)
+    pred_y = (
+        torch.cat([torch.unsqueeze(each_y, 1) for each_y in raw_pred_seq], 1)[:, :max_label_len, :]
+    ).contiguous()
 
-    def _run_one_epoch(self, epoch, cross_valid=False):
-        start = time.time()
-        total_loss = 0
+    if label_smoothing == 0.0 or not (is_training):
+        pred_y = pred_y.permute(0, 2, 1)  # pred_y.contiguous().view(-1,output_class_dim)
+        true_y = torch.max(batch_label, dim=2)[1][:, :max_label_len].contiguous()  # .view(-1)
 
-        data_loader = self.tr_loader if not cross_valid else self.cv_loader
+        loss = criterion(pred_y, true_y)
+        # variable -> numpy before sending into LER calculator
+        batch_ler = LetterErrorRate(
+            torch.max(pred_y.permute(0, 2, 1), dim=2)[1]
+            .cpu()
+            .numpy(),  # .reshape(current_batch_size,max_label_len),
+            true_y.cpu().data.numpy(),
+        )  # .reshape(current_batch_size,max_label_len), data)
 
-        for i, (data) in enumerate(data_loader):
-            utt_ids, feature, label = data
-            sample_id = data[0]
-            t_inputs = data[1]
-            t_targets = data[2]
-            padded_input = t_inputs['inputs'].to(self.device)
-            inputs_length = t_inputs['inputs_length'].to(self.device)
-            padded_target = t_targets['targets'].to(self.device)
-            target_length = t_targets['targets_length'].to(self.device)
+    else:
+        true_y = batch_label[:, :max_label_len, :].contiguous()
+        true_y = true_y.type(torch.cuda.FloatTensor) if use_gpu else true_y.type(torch.FloatTensor)
+        loss = label_smoothing_loss(pred_y, true_y, label_smoothing=label_smoothing)
+        batch_ler = LetterErrorRate(
+            torch.max(pred_y, dim=2)[1].cpu().numpy(),  # .reshape(current_batch_size,max_label_len),
+            torch.max(true_y, dim=2)[1].cpu().data.numpy(),
+        )  # .reshape(current_batch_size,max_label_len), data)
 
-            loss = self.model(padded_input, inputs_length, padded_target)
+    if is_training:
+        loss.backward()
+        optimizer.step()
 
-            if not cross_valid:
-                self.optimizer.zero_grad()
-                loss.backward()
-                grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(),
-                                                           self.max_norm)
-                self.optimizer.step()
+    batch_loss = loss.cpu().data.numpy()
 
-            total_loss += loss.item()
-
-            if i % self.print_freq == 0:
-                print('Epoch {0} | Iter {1} | Average Loss {2:.3f} | '
-                      'Current Loss {3:.6f} | {4:.1f} ms/batch'.format(
-                          epoch + 1, i + 1, total_loss / (i + 1),
-                          loss.item(), 1000 * (time.time() - start) / (i + 1)),
-                      flush=True)
-
-            # Visualizing iteration loss using tensorboard
-            if (self.tensorboard):
-                mode = 'test' if cross_valid else 'train'
-                self.writer.add_scalar(f'Iteration-Loss/{mode}', loss, i)
-        # Visualizing epoch loss using tensorboard
-        if (self.tensorboard):
-            mode = 'test' if cross_valid else 'train'
-            self.writer.add_scalar(
-                f'Epoch-Loss/{mode}', total_loss / (i + 1), epoch)
-        return total_loss / (i + 1)
+    return batch_loss, batch_ler
