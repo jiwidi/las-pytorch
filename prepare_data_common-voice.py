@@ -66,6 +66,8 @@ ignore_files = [
     "data/mozilla/mp3/common_voice_en_19411992.mp3",
 ]
 vocab = vocabulary()
+if not os.path.exists("data/mozilla/processed/"):
+    os.makedirs("data/mozilla/processed/")
 for file in filelist:
     print(f"Processing file {file}")
     tsv = pd.read_csv(file, sep="\t", low_memory=False)
