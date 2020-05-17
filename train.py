@@ -3,7 +3,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
-from model.las_model import Listener, Speller
+from model.las_model import Listener, Speller, LAS
 from torch.autograd import Variable
 from data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -62,7 +62,10 @@ print("Creating model architecture...", flush=True)
 # Create listener and speller
 listener = Listener(**params["model"]["listener"])
 speller = Speller(**params["model"]["speller"])
-
+las = LAS(listener, speller)
+las.cuda()
+# listener.cuda()
+# speller.cuda()
 # Create optimizer
 optimizer = torch.optim.Adam(
     [{"params": listener.parameters()}, {"params": speller.parameters()}],
@@ -77,9 +80,10 @@ for epoch in range(epochs):
     epoch_step = 0
     train_loss = []
     train_ler = []
+    batch_loss = 0
     for i, (data) in enumerate(train_loader):
         print(
-            f"Current Epoch: {epoch} | Epoch step: {epoch_step}/{len(train_loader)}",
+            f"Current Epoch: {epoch} Loss {batch_loss} | Epoch step: {epoch_step}/{len(train_loader)}",
             end="\r",
             flush=True,
         )
@@ -88,15 +92,14 @@ for epoch in range(epochs):
             (float(global_step) / tf_decay_step), 1
         )
 
-        inputs = data[1]["inputs"].to(device)
-        labels = data[2]["targets"].to(device)
+        inputs = data[1]["inputs"].cuda()
+        labels = data[2]["targets"].cuda()
 
         # minibatch execution
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
             batch_label=labels,
-            listener=listener,
-            speller=speller,
+            las_model=las,
             optimizer=optimizer,
             tf_rate=tf_rate,
             is_training=True,
@@ -117,9 +120,15 @@ for epoch in range(epochs):
     # Validation
     val_loss = []
     val_ler = []
-    for i, (data) in enumerate(train_loader):
-        inputs = data[1]["inputs"].to(device)
-        labels = data[2]["targets"].to(device)
+    val_step = 0
+    for i, (data) in enumerate(dev_loader):
+        print(
+            f"Current Epoch: {epoch} | Epoch step: {epoch_step}/{len(train_loader)} Validating step: {val_step}/{len(dev_loader)}",
+            end="\r",
+            flush=True,
+        )
+        inputs = data[1]["inputs"].cuda()
+        labels = data[2]["targets"].cuda()
 
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
@@ -134,6 +143,7 @@ for epoch in range(epochs):
         )
         val_loss.append(batch_loss)
         val_ler.extend(batch_ler)
+        val_step += 1
 
     val_loss = np.array([sum(val_loss) / len(val_loss)])
     val_ler = np.array([sum(val_ler) / len(val_ler)])

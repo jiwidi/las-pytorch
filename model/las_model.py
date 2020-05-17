@@ -21,6 +21,25 @@ import pdb
 # Note the input should have timestep%2 == 0
 
 
+class LAS(nn.Module):
+    def __init__(self, listener, speller):
+        super(LAS, self).__init__()
+        self.listener = listener
+        self.speller = speller
+
+    def forward(self, batch_data, batch_label, teacher_force_rate, is_training=True):
+        listener_feature = self.listener(batch_data)
+        if is_training:
+            raw_pred_seq, attention_record = self.speller(
+                listener_feature, ground_truth=batch_label, teacher_force_rate=teacher_force_rate
+            )
+        else:
+            raw_pred_seq, attention_record = self.speller(
+                listener_feature, ground_truth=None, teacher_force_rate=0
+            )
+        return raw_pred_seq, attention_record
+
+
 class pBLSTMLayer(nn.Module):
     def __init__(self, input_feature_dim, hidden_dim, rnn_unit="LSTM", dropout_rate=0.0):
         super(pBLSTMLayer, self).__init__()
@@ -80,10 +99,6 @@ class Listener(nn.Module):
                 ),
             )
 
-        self.use_gpu = use_gpu
-        if self.use_gpu:
-            self = self.cuda()
-
     def forward(self, input_x):
         output, _ = self.pLSTM_layer0(input_x)
         for i in range(1, self.num_layers):
@@ -129,8 +144,6 @@ class Speller(nn.Module):
         )
         self.character_distribution = nn.Linear(hidden_size * 2, vocab_size)
         self.softmax = nn.LogSoftmax(dim=-1)
-        if self.use_gpu:
-            self = self.cuda()
 
     # Stepwise operation of each sequence
     def forward_step(self, input_word, last_hidden_state, listener_feature):

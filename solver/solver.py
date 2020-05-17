@@ -44,8 +44,7 @@ def label_smoothing_loss(pred_y, true_y, label_smoothing=0.1):
 def batch_iterator(
     batch_data,
     batch_label,
-    listener,
-    speller,
+    las_model,
     optimizer,
     tf_rate,
     is_training,
@@ -57,14 +56,12 @@ def batch_iterator(
     max_label_len = min([batch_label.size()[1], max_label_len])
     criterion = nn.NLLLoss(ignore_index=0).cuda()
     optimizer.zero_grad()
-    listner_feature = listener(batch_data)
-    if is_training:
-        raw_pred_seq, _ = speller(
-            listner_feature, ground_truth=batch_label, teacher_force_rate=tf_rate
-        )
-    else:
-        raw_pred_seq, _ = speller(listner_feature, ground_truth=None, teacher_force_rate=0)
-
+    raw_pred_seq, _ = las_model(
+        batch_data=batch_data,
+        batch_label=batch_label,
+        teacher_force_rate=tf_rate,
+        is_training=is_training,
+    )
     pred_y = (
         torch.cat([torch.unsqueeze(each_y, 1) for each_y in raw_pred_seq], 1)[:, :max_label_len, :]
     ).contiguous()
