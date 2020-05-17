@@ -1,6 +1,6 @@
 data:
     name: mozilla
-    vocab: git 9data/LibriSpeech/vocabulary.tsv
+    vocab: data/LibriSpeech/vocabulary.tsv
     batch_size: 2
     text: character
     train: data/LibriSpeech/processed/train-clean-100_processed.tsv
