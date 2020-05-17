@@ -1,6 +1,6 @@
 ## LAS-Pytorch
 
-This is my pytorch implementation for the Listen, [Attend and Spell](https://arxiv.org/abs/1508.01211v2) (LAS) google ASR deep learning model. I used both the mozilla [Common voice(https://voice.mozilla.org/en/datasets)] dataset and the [LibriSpeech](https://www.openslr.org/12) dataset.
+This is my pytorch implementation for the [Listen, Attend and Spell](https://arxiv.org/abs/1508.01211v2) (LAS) google ASR deep learning model. I used both the mozilla [Common voice(https://voice.mozilla.org/en/datasets)] dataset and the [LibriSpeech](https://www.openslr.org/12) dataset.
 
 The feature transformation is done on the fly while loading the files thanks to torchaudio.
 
@@ -9,7 +9,7 @@ The feature transformation is done on the fly while loading the files thanks to 
 ## How to run it
 
 ### Requirements
-Code is setup to run with both the mozilla [Common voice(https://voice.mozilla.org/en/datasets)] dataset and the [LibriSpeech](https://www.openslr.org/12) dataset. If you want to run the code you should download the datasets and extract them under data/ to follow the following structure:
+Code is setup to run with both the mozilla [Common voice](https://voice.mozilla.org/en/datasets) dataset and the [LibriSpeech](https://www.openslr.org/12) dataset. If you want to run the code you should download the datasets and extract them under data/ to follow the following structure:
 
 ### Data
 ```
