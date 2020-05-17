@@ -48,11 +48,7 @@ class AudioDataset(Dataset):
                 for c in sentence:
                     if c == " ":
                         c = "<PAD>"
-                    index_char = (
-                        self.char2idx[c]
-                        if c in self.char2idx
-                        else self.char2idx["UNK"]
-                    )
+                    index_char = self.char2idx[c] if c in self.char2idx else self.char2idx["UNK"]
                     index_char_oh = OneHotEncode(index_char)
                     label.append(index_char_oh)
                 self.targets_dict[sid] = label
@@ -104,9 +100,7 @@ def collate_fn_with_eos_bos(batch):
                 constant_values=0.0,
             )
         )
-        padded_targets.append(
-            [BOS] + target + [EOS] + [PAD] * (max_target_length - target_len[i])
-        )
+        padded_targets.append([BOS] + target + [EOS] + [PAD] * (max_target_length - target_len[i]))
         i += 1
 
     features = torch.FloatTensor(padded_features)
@@ -132,9 +126,7 @@ def collate_fn(batch):
     max_feature_length = max(features_length)
     max_target_length = max(targets_length)
     if max_feature_length % (2 ** listener_layers) != 0:
-        max_feature_length += (2 ** listener_layers) - (
-            max_feature_length % (2 ** listener_layers)
-        )
+        max_feature_length += (2 ** listener_layers) - (max_feature_length % (2 ** listener_layers))
 
     padded_features = []
     padded_targets = []
@@ -150,8 +142,7 @@ def collate_fn(batch):
             )
         )
         tar_padds = [
-            OneHotEncode(PAD, len(target[1]))
-            for u in range((max_target_length - len(target)))
+            OneHotEncode(PAD, len(target[1])) for u in range((max_target_length - len(target)))
         ]
         # print(len(target))
         # print(len(target[1]))
@@ -173,19 +164,11 @@ def collate_fn(batch):
 
 class AudioDataLoader(object):
     def __init__(
-        self,
-        dataset,
-        shuffle=False,
-        ngpu=1,
-        mode="ddp",
-        include_eos_sos=False,
-        num_workers=8,
+        self, dataset, shuffle=False, ngpu=1, mode="ddp", include_eos_sos=False, num_workers=8,
     ):
         if ngpu > 1:
             if mode == "ddp":
-                self.sampler = torch.utils.data.distributed.DistributedSampler(
-                    dataset
-                )
+                self.sampler = torch.utils.data.distributed.DistributedSampler(dataset)
             else:
                 self.sampler = None
         else:
@@ -198,9 +181,7 @@ class AudioDataLoader(object):
             num_workers=num_workers * ngpu,
             pin_memory=False,
             sampler=self.sampler,
-            collate_fn=collate_fn_with_eos_bos
-            if include_eos_sos
-            else collate_fn,
+            collate_fn=collate_fn_with_eos_bos if include_eos_sos else collate_fn,
         )
 
     def set_epoch(self, epoch):

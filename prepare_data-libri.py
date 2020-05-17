@@ -83,7 +83,7 @@ for folder in libri_path:
                     filepath = prepath + id + ".flac"
                     filepaths.append(filepath)
                     labels.append(sentence)
-    tsv = pd.DataFrame({"path": filepaths, "sentence": labels})
+    tsv = pd.DataFrame({"id": id, "path": filepaths, "sentence": labels})
     filename = "data/LibriSpeech/processed/" + folder.split("/")[-2] + "_processed.tsv"
 
     if args.check:
