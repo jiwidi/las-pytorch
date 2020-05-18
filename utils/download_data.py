@@ -13,7 +13,7 @@ mozilla_urls = {
 }
 lib_urls = {
     "test-clean": "https://www.openslr.org/resources/12/test-clean.tar.gz",
-    "train-clean-100": "hhttps://www.openslr.org/resources/12/train-clean-100.tar.gz",
+    "train-clean-100": "https://www.openslr.org/resources/12/train-clean-100.tar.gz",
     "dev-clean": "https://www.openslr.org/resources/12/dev-clean.tar.gz",
 }
 if not os.path.exists("data/"):
