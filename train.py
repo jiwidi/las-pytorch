@@ -23,13 +23,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Writer will output to ./runs/ directory by default
 writer = SummaryWriter()
 
-parser = argparse.ArgumentParser(
-    description="Training script for LAS on Librispeech .")
+parser = argparse.ArgumentParser(description="Training script for LAS on Librispeech .")
 parser.add_argument(
     "--config_path",
     metavar="config_path",
     type=str,
     help="Path to config file for training.",
+    required=True,
 )
 args = parser.parse_args()
 
@@ -59,12 +59,9 @@ epochs = params["training"]["epochs"]
 print("---------------------------------------")
 print("Processing datasets...", flush=True)
 train_dataset = AudioDataset(params, "train")
-train_loader = AudioDataLoader(train_dataset,
-                               num_workers=params["data"]["num_works"]).loader
+train_loader = AudioDataLoader(train_dataset, num_workers=params["data"]["num_works"]).loader
 dev_dataset = AudioDataset(params, "dev")
-dev_loader = AudioDataLoader(
-    dev_dataset,
-    num_workers=params["data"]["num_works"]).loader
+dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
 
 print("---------------------------------------")
 print("Creating model architecture...", flush=True)
@@ -174,20 +171,16 @@ for epoch in range(start_epoch, epochs):
     if params["training"]["checkpoint"]:
         # Check if epoch-10 file exits, if so we delete it
         file_path_old = os.path.join(
-            params["training"]["save_folder"],
-            f"{data_name}-epoch{epoch-10}.pth.tar")
+            params["training"]["save_folder"], f"{data_name}-epoch{epoch-10}.pth.tar"
+        )
         if os.path.exists(file_path_old):
             os.remove(file_path_old)
 
         file_path = os.path.join(
-            params["training"]["save_folder"],
-            f"{data_name}-epoch{epoch}.pth.tar")
+            params["training"]["save_folder"], f"{data_name}-epoch{epoch}.pth.tar"
+        )
         torch.save(
-            las.serialize(
-                optimizer=optimizer,
-                epoch=epoch,
-                tr_loss=val_loss,
-                val_loss=val_loss),
+            las.serialize(optimizer=optimizer, epoch=epoch, tr_loss=val_loss, val_loss=val_loss),
             file_path,
         )
         print()
@@ -195,16 +188,12 @@ for epoch in range(start_epoch, epochs):
 
     if val_loss < best_cv_loss:  # We found a best model, lets save it too
         file_path = os.path.join(
-            params["training"]["save_folder"],
-            f"{data_name}-BEST_LOSS-epoch{epoch}.pth.tar")
+            params["training"]["save_folder"], f"{data_name}-BEST_LOSS-epoch{epoch}.pth.tar"
+        )
         # purge(params["training"]["save_folder"], "*BEST_LOSS*")  # Remove
         # previous best models
         torch.save(
-            las.serialize(
-                optimizer=optimizer,
-                epoch=epoch,
-                tr_loss=val_loss,
-                val_loss=val_loss),
+            las.serialize(optimizer=optimizer, epoch=epoch, tr_loss=val_loss, val_loss=val_loss),
             file_path,
         )
         print("Saving BEST model to %s" % file_path)
