@@ -1,0 +1,10 @@
+torchaudio==0.5.0a0+3305d5c
+wget==3.2
+numpy==1.18.1
+editdistance==0.5.3
+torch==1.5.0
+pydub==0.24.0
+enlighten==1.5.1
+pandas==1.0.3
+tensorboard=2.1
+PyYAML==5.3.1
