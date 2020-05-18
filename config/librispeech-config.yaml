@@ -1,5 +1,5 @@
 data:
-    name: mozilla
+    name: librispeech
     vocab: data/LibriSpeech/vocabulary.tsv
     batch_size: 2
     text: character
@@ -43,7 +43,7 @@ training:
     max_norm: 5
     save_folder: 'runs/'
     checkpoint: True
-    continue_from: False
+    continue_from: False #runs/librispeech-epoch0.pth.tar
     tensorboard: True
     print_freq: 500
     label_smoothing: 0.1

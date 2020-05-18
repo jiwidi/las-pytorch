@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from model.las_model import Listener, Speller, LAS
+from utils.utils import purge
 from torch.autograd import Variable
 from data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -22,9 +23,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Writer will output to ./runs/ directory by default
 writer = SummaryWriter()
 
-parser = argparse.ArgumentParser(description="Training script for LAS on Librispeech .")
+parser = argparse.ArgumentParser(
+    description="Training script for LAS on Librispeech .")
 parser.add_argument(
-    "--config_path", metavar="config_path", type=str, help="Path to config file for training.",
+    "--config_path",
+    metavar="config_path",
+    type=str,
+    help="Path to config file for training.",
 )
 args = parser.parse_args()
 
@@ -43,6 +48,7 @@ config_path = args.config_path
 print("Loading configure file at", config_path)
 with open(config_path, "r") as f:
     params = yaml.load(f, Loader=yaml.FullLoader)
+data_name = params["data"]["name"]
 
 tf_rate_upperbound = params["training"]["tf_rate_upperbound"]
 tf_rate_lowerbound = params["training"]["tf_rate_lowerbound"]
@@ -53,9 +59,12 @@ epochs = params["training"]["epochs"]
 print("---------------------------------------")
 print("Processing datasets...", flush=True)
 train_dataset = AudioDataset(params, "train")
-train_loader = AudioDataLoader(train_dataset, num_workers=params["data"]["num_works"]).loader
+train_loader = AudioDataLoader(train_dataset,
+                               num_workers=params["data"]["num_works"]).loader
 dev_dataset = AudioDataset(params, "dev")
-dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
+dev_loader = AudioDataLoader(
+    dev_dataset,
+    num_workers=params["data"]["num_works"]).loader
 
 print("---------------------------------------")
 print("Creating model architecture...", flush=True)
@@ -63,27 +72,39 @@ print("Creating model architecture...", flush=True)
 listener = Listener(**params["model"]["listener"])
 speller = Speller(**params["model"]["speller"])
 las = LAS(listener, speller)
+
+print(las)
 las.cuda()
-# listener.cuda()
-# speller.cuda()
 # Create optimizer
 optimizer = torch.optim.Adam(
     [{"params": listener.parameters()}, {"params": speller.parameters()}],
     lr=params["training"]["lr"],
 )
+if params["training"]["continue_from"]:
+    print("Loading checkpoint model %s" % params["training"]["continue_from"])
+    package = torch.load(params["training"]["continue_from"])
+    las.load_state_dict(package["state_dict"])
+    optimizer.load_state_dict(package["optim_dict"])
+    start_epoch = int(package.get("epoch", 1))
+else:
+    start_epoch = 0
+# listener.cuda()
+# speller.cuda()
+
 
 print("---------------------------------------")
 print("Training...", flush=True)
 
 global_step = 0
-for epoch in range(epochs):
+best_cv_loss = 10e5
+for epoch in range(start_epoch, epochs):
     epoch_step = 0
     train_loss = []
     train_ler = []
     batch_loss = 0
     for i, (data) in enumerate(train_loader):
         print(
-            f"Current Epoch: {epoch} Loss {batch_loss} | Epoch step: {epoch_step}/{len(train_loader)}",
+            f"Current Epoch: {epoch} Loss {np.round(batch_loss,3)} | Epoch step: {epoch_step}/{len(train_loader)}",
             end="\r",
             flush=True,
         )
@@ -133,8 +154,7 @@ for epoch in range(epochs):
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
             batch_label=labels,
-            listener=listener,
-            speller=speller,
+            las_model=las,
             optimizer=optimizer,
             tf_rate=tf_rate,
             is_training=True,
@@ -149,6 +169,46 @@ for epoch in range(epochs):
     val_ler = np.array([sum(val_ler) / len(val_ler)])
     writer.add_scalar("loss/dev", val_loss, epoch)
     writer.add_scalar("cer/dev", val_ler, epoch)
+
+    # Checkpoint saving model each epoch and keeping only last 10 epochs
+    if params["training"]["checkpoint"]:
+        # Check if epoch-10 file exits, if so we delete it
+        file_path_old = os.path.join(
+            params["training"]["save_folder"],
+            f"{data_name}-epoch{epoch-10}.pth.tar")
+        if os.path.exists(file_path_old):
+            os.remove(file_path_old)
+
+        file_path = os.path.join(
+            params["training"]["save_folder"],
+            f"{data_name}-epoch{epoch}.pth.tar")
+        torch.save(
+            las.serialize(
+                optimizer=optimizer,
+                epoch=epoch,
+                tr_loss=val_loss,
+                val_loss=val_loss),
+            file_path,
+        )
+        print()
+        print("Saving checkpoint model to %s" % file_path)
+
+    if val_loss < best_cv_loss:  # We found a best model, lets save it too
+        file_path = os.path.join(
+            params["training"]["save_folder"],
+            f"{data_name}-BEST_LOSS-epoch{epoch}.pth.tar")
+        # purge(params["training"]["save_folder"], "*BEST_LOSS*")  # Remove
+        # previous best models
+        torch.save(
+            las.serialize(
+                optimizer=optimizer,
+                epoch=epoch,
+                tr_loss=val_loss,
+                val_loss=val_loss),
+            file_path,
+        )
+        print("Saving BEST model to %s" % file_path)
+
     # writer.add_scalars("cer", {"train": np.array([np.array(batch_ler).mean()])}, global_step)
     # pdb.set_trace()
     # print(inputs.size())

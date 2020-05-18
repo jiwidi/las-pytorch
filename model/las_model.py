@@ -39,6 +39,29 @@ class LAS(nn.Module):
             )
         return raw_pred_seq, attention_record
 
+    def serialize(self, optimizer, epoch, tr_loss, val_loss):
+        package = {
+            # encoder
+            "einput": self.listener.input_feature_dim,
+            "ehidden": self.listener.hidden_size,
+            "elayer": self.listener.num_layers,
+            "edropout": self.listener.dropout_rate,
+            "etype": self.listener.rnn_unit,
+            # decoder
+            "dvocab_size": self.speller.label_dim,
+            "dhidden": self.speller.hidden_size,
+            "dlayer": self.speller.num_layers,
+            "etype": self.speller.rnn_unit,
+            # state
+            "state_dict": self.state_dict(),
+            "optim_dict": optimizer.state_dict(),
+            "epoch": epoch,
+        }
+        if tr_loss is not None:
+            package["tr_loss"] = tr_loss
+            package["val_loss"] = val_loss
+        return package
+
 
 class pBLSTMLayer(nn.Module):
     def __init__(self, input_feature_dim, hidden_dim, rnn_unit="LSTM", dropout_rate=0.0):
@@ -83,7 +106,11 @@ class Listener(nn.Module):
     ):
         super(Listener, self).__init__()
         # Listener RNN layer
+        self.input_feature_dim = input_feature_dim
+        self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.rnn_unit = rnn_unit
+        self.dropout_rate = dropout_rate
         assert self.num_layers >= 1, "Listener should have at least 1 layer"
 
         self.pLSTM_layer0 = pBLSTMLayer(
@@ -127,6 +154,8 @@ class Speller(nn.Module):
     ):
         super(Speller, self).__init__()
         self.rnn_unit = getattr(nn, rnn_unit.upper())
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
         self.max_label_len = max_label_len
         self.decode_mode = decode_mode
         self.use_gpu = use_gpu

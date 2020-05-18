@@ -6,9 +6,16 @@ from torch.autograd import Variable
 import numpy as np
 import editdistance as ed
 import pdb
+import re
 
 ##GLOBAL VARIABLES
 IGNORE_ID = -1
+
+
+def purge(dir, pattern):
+    for f in os.listdir(dir):
+        if re.search(pattern, f):
+            os.remove(os.path.join(dir, f))
 
 
 def pad_list(xs, pad_value):
@@ -44,9 +51,7 @@ def CreateOnehotVariable(input_x, encoding_dim=63):
     time_steps = input_x.size(1)
     input_x = input_x.unsqueeze(2).type(torch.LongTensor)
     onehot_x = Variable(
-        torch.LongTensor(batch_size, time_steps, encoding_dim)
-        .zero_()
-        .scatter_(-1, input_x, 1)
+        torch.LongTensor(batch_size, time_steps, encoding_dim).zero_().scatter_(-1, input_x, 1)
     ).type(input_type)
 
     return onehot_x
