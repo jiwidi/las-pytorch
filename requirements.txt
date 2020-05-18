@@ -1,4 +1,4 @@
-torchaudio==0.5.0a0+3305d5c
+torchaudio==0.5
 wget==3.2
 numpy==1.18.1
 editdistance==0.5.3
