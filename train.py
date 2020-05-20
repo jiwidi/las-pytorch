@@ -101,7 +101,7 @@ for epoch in range(start_epoch, epochs):
     batch_loss = 0
     for i, (data) in enumerate(train_loader):
         print(
-            f"Current Epoch: {epoch} Loss {np.round(batch_loss,3)} | Epoch step: {epoch_step}/{len(train_loader)}",
+            f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
             end="\r",
             flush=True,
         )
@@ -171,7 +171,7 @@ for epoch in range(start_epoch, epochs):
     if params["training"]["checkpoint"]:
         # Check if epoch-10 file exits, if so we delete it
         file_path_old = os.path.join(
-            params["training"]["save_folder"], f"{data_name}-epoch{epoch-10}.pth.tar"
+            params["training"]["save_folder"], f"{data_name}-epoch{epoch - 10}.pth.tar"
         )
         if os.path.exists(file_path_old):
             os.remove(file_path_old)
