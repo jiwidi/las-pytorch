@@ -177,7 +177,7 @@ class AudioDataLoader(object):
         self.loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=dataset.batch_size * ngpu,
-            shuffle=shuffle if self.sampler is None else False,
+            shuffle=shuffle,
             num_workers=num_workers * ngpu,
             pin_memory=False,
             sampler=self.sampler,
