@@ -8,19 +8,19 @@ data:
     dev: data/LibriSpeech/processed/dev-clean_processed.tsv
     short_first: False
     num_mel_bins: 40
-    num_works: 4
+    num_works: 16
     vocab_size: 42
 model:
     listener:
         input_feature_dim: 40
-        hidden_size: 256
+        hidden_size: 512
         num_layers: 2
         dropout: 0.0
         bidirectional: True
         rnn_unit: "LSTM"
         use_gpu: True
     speller:
-        hidden_size: 512
+        hidden_size: 1024
         num_layers: 2
         bidirectional: True
         rnn_unit: "LSTM"
@@ -30,7 +30,7 @@ model:
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 256
+        listener_hidden_size: 512
         max_label_len: 2463
 training:
     optimizer: 'adam'
