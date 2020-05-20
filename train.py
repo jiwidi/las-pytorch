@@ -111,7 +111,7 @@ for epoch in range(start_epoch, epochs):
     for i, (data) in enumerate(train_loader):
         print(
             f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-            # end="\r",
+            end="\r",
             flush=True,
         )
 
