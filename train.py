@@ -68,7 +68,9 @@ epochs = params["training"]["epochs"]
 print("---------------------------------------")
 print("Processing datasets...", flush=True)
 train_dataset = AudioDataset(params, "train")
-train_loader = AudioDataLoader(train_dataset, num_workers=params["data"]["num_works"]).loader
+train_loader = AudioDataLoader(
+    train_dataset, shuffle=True, num_workers=params["data"]["num_works"]
+).loader
 dev_dataset = AudioDataset(params, "dev")
 dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
 
@@ -116,12 +118,13 @@ for epoch in range(start_epoch, epochs):
         tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
             (float(global_step) / tf_decay_step), 1
         )
+        with torch.no_grad():
+            inputs = data[1]["inputs"].cuda()
+            labels = data[2]["targets"].cuda()
 
-        inputs = data[1]["inputs"].cuda()
-        labels = data[2]["targets"].cuda()
-        # print(
-        #     f"For epoch {epoch} inputs has size {getsizeof(inputs) }mb and labels has size {getsizeof(labels) }mb"
-        # )
+        print(
+            f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
+        )
         # minibatch execution
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
@@ -136,6 +139,7 @@ for epoch in range(start_epoch, epochs):
         del inputs
         del labels
         torch.cuda.empty_cache()
+
         train_loss.append(batch_loss)
         train_ler.extend(batch_ler)
 

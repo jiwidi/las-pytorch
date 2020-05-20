@@ -8,10 +8,12 @@ The feature transformation is done on the fly while loading the files thanks to 
 
 ## Results
 
+Still training lel
+
 ## How to run it
 
 ### Requirements
-Code is setup to run with both the mozilla [Common voice](https://voice.mozilla.org/en/datasets) dataset and the [LibriSpeech](https://www.openslr.org/12) dataset. If you want to run the code you should download the datasets and extract them under data/ to follow the following structure:
+Code is setup to run with both the mozilla [Common voice](https://voice.mozilla.org/en/datasets) dataset and the [LibriSpeech](https://www.openslr.org/12) dataset. If you want to run the code you should download the datasets and extract them under data/ or run the script `utils/download_data.py` which will download it and extract it in the following format:
 
 ### Data
 ```
