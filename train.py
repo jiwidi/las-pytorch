@@ -19,9 +19,7 @@ import pdb
 
 # Set cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# Tensorboard logging
-# Writer will output to ./runs/ directory by default
-writer = SummaryWriter()
+
 
 parser = argparse.ArgumentParser(description="Training script for LAS on Librispeech .")
 parser.add_argument(
@@ -31,8 +29,18 @@ parser.add_argument(
     help="Path to config file for training.",
     required=True,
 )
+parser.add_argument(
+    "--experiment_name",
+    metavar="experiment_name",
+    type=str,
+    help="Name for tensorboard logs",
+    default="",
+)
 args = parser.parse_args()
 
+# Tensorboard logging
+# Writer will output to ./runs/ directory by default
+writer = SummaryWriter(comment)
 # Fix seed
 seed = 17
 np.random.seed(seed)

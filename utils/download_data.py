@@ -38,6 +38,7 @@ for name, url in mozilla_urls.items():
     output_directory = url.split("/")[-1]
     print(f"Downloading {output_directory}")
     filename = wget.download(url, out=output_directory)
+    print()
     print(f"Extracting {output_directory}")
     subprocess.run(["tar", "-xf", filename, "-C", "data/mozilla/"])
     subprocess.run(["rm", "-f", filename])
