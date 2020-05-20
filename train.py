@@ -109,10 +109,14 @@ for epoch in range(start_epoch, epochs):
     train_ler = []
     batch_loss = 0
     for i, (data) in enumerate(train_loader):
+        # print(
+        #     f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
+        #     # end="\r",
+        #     flush=True,
+        # )
+
         print(
-            f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-            end="\r",
-            flush=True,
+            f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
         )
         # Adjust LR
         tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
@@ -121,7 +125,6 @@ for epoch in range(start_epoch, epochs):
         with torch.no_grad():
             inputs = data[1]["inputs"].cuda()
             labels = data[2]["targets"].cuda()
-
         # minibatch execution
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
