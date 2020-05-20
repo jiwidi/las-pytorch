@@ -73,7 +73,7 @@ class AudioDataset(Dataset):
         targets = self.targets_dict[utt_id]
         targets_length = [len(i) for i in targets]
         real_label = self.targets_real_target[utt_id]
-        # print(f"extracting {real_label}")
+        # print(f"extracting target with {real_label}")
         return utt_id, feature, feature_length, targets, targets_length
 
     def __len__(self):

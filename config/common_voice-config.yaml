@@ -1,7 +1,7 @@
 data:
     name: mozilla
     vocab: data/mozilla/vocabulary.tsv
-    batch_size: 2
+    batch_size: 8
     text: character
     train: data/mozilla/processed/train_processed.tsv
     test: data/mozilla/processed/test_processed.tsv
@@ -13,14 +13,14 @@ data:
 model:
     listener:
         input_feature_dim: 40
-        hidden_size: 128
+        hidden_size: 256
         num_layers: 1
         dropout: 0.0
         bidirectional: True
         rnn_unit: "LSTM"
         use_gpu: True
     speller:
-        hidden_size: 256
+        hidden_size: 512
         num_layers: 1
         bidirectional: True
         rnn_unit: "LSTM"
@@ -30,8 +30,8 @@ model:
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 128                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 128
-        max_label_len: 2463
+        listener_hidden_size: 256
+        max_label_len: 705
 training:
     optimizer: 'adam'
     lr: 0.01

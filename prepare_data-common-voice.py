@@ -86,5 +86,6 @@ for file in filelist:
     # Fix file paths
     tsv["path"] = "data/mozilla/mp3/" + tsv["path"].astype(str)
     tsv = tsv[~tsv["path"].isin(ignore_files)]
+    tsv["client_id"] = tsv.index.values
     tsv.to_csv(filename, sep="\t", index=False)
 vocab.to_file("data/mozilla/")

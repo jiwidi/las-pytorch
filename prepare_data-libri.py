@@ -63,6 +63,8 @@ for folder in libri_path:
     users = os.listdir(folder)
     filepaths = []
     labels = []
+    list_ids = []
+    ids = 0
     for user in users:
         reads = os.listdir(folder + user)
         for subread in reads:
@@ -83,7 +85,9 @@ for folder in libri_path:
                     filepath = prepath + id + ".flac"
                     filepaths.append(filepath)
                     labels.append(sentence)
-    tsv = pd.DataFrame({"id": id, "path": filepaths, "sentence": labels})
+                    list_ids.append(ids)
+                    ids += 1
+    tsv = pd.DataFrame({"id": list_ids, "path": filepaths, "sentence": labels})
     filename = "data/LibriSpeech/processed/" + folder.split("/")[-2] + "_processed.tsv"
 
     if args.check:

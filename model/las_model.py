@@ -102,7 +102,7 @@ class Listener(nn.Module):
         rnn_unit,
         use_gpu,
         dropout_rate=0.0,
-        **kwargs
+        **kwargs,
     ):
         super(Listener, self).__init__()
         # Listener RNN layer
@@ -150,7 +150,7 @@ class Speller(nn.Module):
         multi_head,
         decode_mode,
         use_gpu=True,
-        **kwargs
+        **kwargs,
     ):
         super(Speller, self).__init__()
         self.rnn_unit = getattr(nn, rnn_unit.upper())
@@ -206,7 +206,6 @@ class Speller(nn.Module):
             max_step = self.max_label_len
         else:
             max_step = ground_truth.size()[1]
-
         for step in range(max_step):
             raw_pred, hidden_state, context, attention_score = self.forward_step(
                 rnn_input, hidden_state, listener_feature
