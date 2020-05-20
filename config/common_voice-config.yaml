@@ -8,19 +8,19 @@ data:
     dev: data/mozilla/processed/dev_processed.tsv
     short_first: False
     num_mel_bins: 40
-    num_works: 1
+    num_works: 8
     vocab_size: 42
 model:
     listener:
         input_feature_dim: 40
-        hidden_size: 2
+        hidden_size: 128
         num_layers: 1
         dropout: 0.0
         bidirectional: True
         rnn_unit: "LSTM"
         use_gpu: True
     speller:
-        hidden_size: 4
+        hidden_size: 256
         num_layers: 1
         bidirectional: True
         rnn_unit: "LSTM"
@@ -30,7 +30,7 @@ model:
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 128                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 2
+        listener_hidden_size: 128
         max_label_len: 2463
 training:
     optimizer: 'adam'

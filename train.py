@@ -41,9 +41,9 @@ args = parser.parse_args()
 
 # Tensorboard logging
 # Writer will output to ./runs/ directory by default
-writer = SummaryWriter(args.experiment_name)
+writer = SummaryWriter(comment=args.experiment_name)
 # Fix seed
-seed = 17
+seed = 175
 np.random.seed(seed)
 torch.manual_seed(seed)
 random.seed(seed)
@@ -111,7 +111,7 @@ for epoch in range(start_epoch, epochs):
     for i, (data) in enumerate(train_loader):
         print(
             f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-            end="\r",
+            # end="\r",
             flush=True,
         )
 
@@ -127,6 +127,7 @@ for epoch in range(start_epoch, epochs):
         #     f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
         # )
         # minibatch execution
+
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
             batch_label=labels,

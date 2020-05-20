@@ -56,6 +56,7 @@ def batch_iterator(
     max_label_len = min([batch_label.size()[1], max_label_len])
     criterion = nn.NLLLoss(ignore_index=0).cuda()
     optimizer.zero_grad()
+
     raw_pred_seq, _ = las_model(
         batch_data=batch_data,
         batch_label=batch_label,
