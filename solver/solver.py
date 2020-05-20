@@ -42,15 +42,15 @@ def label_smoothing_loss(pred_y, true_y, label_smoothing=0.1):
 
 
 def batch_iterator(
-        batch_data,
-        batch_label,
-        las_model,
-        optimizer,
-        tf_rate,
-        is_training,
-        max_label_len,
-        label_smoothing,
-        use_gpu=True,
+    batch_data,
+    batch_label,
+    las_model,
+    optimizer,
+    tf_rate,
+    is_training,
+    max_label_len,
+    label_smoothing,
+    use_gpu=True,
 ):
     label_smoothing = label_smoothing
     max_label_len = min([batch_label.size()[1], max_label_len])
@@ -74,8 +74,8 @@ def batch_iterator(
         # variable -> numpy before sending into LER calculator
         batch_ler = LetterErrorRate(
             torch.max(pred_y.permute(0, 2, 1), dim=2)[1]
-                .cpu()
-                .numpy(),  # .reshape(current_batch_size,max_label_len),
+            .cpu()
+            .numpy(),  # .reshape(current_batch_size,max_label_len),
             true_y.cpu().data.numpy(),
         )  # .reshape(current_batch_size,max_label_len), data)
 

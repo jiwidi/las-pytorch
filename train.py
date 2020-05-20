@@ -93,8 +93,6 @@ if params["training"]["continue_from"]:
     start_epoch = int(package.get("epoch", 1))
 else:
     start_epoch = 0
-# listener.cuda()
-# speller.cuda()
 
 
 print("---------------------------------------")
@@ -132,6 +130,8 @@ for epoch in range(start_epoch, epochs):
             max_label_len=params["data"]["vocab_size"],
             label_smoothing=params["training"]["label_smoothing"],
         )
+        del inputs
+        del labels
         train_loss.append(batch_loss)
         train_ler.extend(batch_ler)
 
