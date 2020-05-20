@@ -40,7 +40,7 @@ args = parser.parse_args()
 
 # Tensorboard logging
 # Writer will output to ./runs/ directory by default
-writer = SummaryWriter(comment)
+writer = SummaryWriter(args.experiment_name)
 # Fix seed
 seed = 17
 np.random.seed(seed)
