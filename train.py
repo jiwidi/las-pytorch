@@ -115,9 +115,6 @@ for epoch in range(start_epoch, epochs):
         #     flush=True,
         # )
 
-        print(
-            f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
-        )
         # Adjust LR
         tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
             (float(global_step) / tf_decay_step), 1
@@ -125,6 +122,10 @@ for epoch in range(start_epoch, epochs):
         with torch.no_grad():
             inputs = data[1]["inputs"].cuda()
             labels = data[2]["targets"].cuda()
+
+        print(
+            f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
+        )
         # minibatch execution
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,
