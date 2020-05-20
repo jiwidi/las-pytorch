@@ -8,7 +8,7 @@ data:
     dev: data/LibriSpeech/processed/dev-clean_processed.tsv
     short_first: False
     num_mel_bins: 40
-    num_works: 1
+    num_works: 4
     vocab_size: 42
 model:
     listener:
