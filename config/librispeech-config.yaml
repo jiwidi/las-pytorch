@@ -30,7 +30,7 @@ model:
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 1024
+        listener_hidden_size: 256
         max_label_len: 2463
 training:
     optimizer: 'adam'
