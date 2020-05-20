@@ -9,6 +9,7 @@ from torch.autograd import Variable
 from data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
 from solver.solver import batch_iterator
+from sys import getsizeof
 import numpy as np
 import yaml
 import os
@@ -108,7 +109,7 @@ for epoch in range(start_epoch, epochs):
     for i, (data) in enumerate(train_loader):
         print(
             f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-            end="\r",
+            # end="\r",
             flush=True,
         )
         # Adjust LR
@@ -118,7 +119,9 @@ for epoch in range(start_epoch, epochs):
 
         inputs = data[1]["inputs"].cuda()
         labels = data[2]["targets"].cuda()
-
+        # print(
+        #     f"For epoch {epoch} inputs has size {getsizeof(inputs) }mb and labels has size {getsizeof(labels) }mb"
+        # )
         # minibatch execution
         batch_loss, batch_ler = batch_iterator(
             batch_data=inputs,

@@ -21,7 +21,7 @@ model:
         use_gpu: True
     speller:
         hidden_size: 1024
-        num_layers: 2
+        num_layers: 1
         bidirectional: True
         rnn_unit: "LSTM"
         vocab_size: 42                             # 61 phonemes + 2 for <sos> & <eos>
