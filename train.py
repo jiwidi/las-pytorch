@@ -135,6 +135,7 @@ for epoch in range(start_epoch, epochs):
         )
         del inputs
         del labels
+        torch.cuda.empty_cache()
         train_loss.append(batch_loss)
         train_ler.extend(batch_ler)
 
