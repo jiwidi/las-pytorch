@@ -26,7 +26,7 @@ data
 │   ├── README.TXT
 │   ├── SPEAKERS.TXT
 │   ├── test-clean/
-│   ├── train-clean-100/
+│   └──  train-clean-100/
 └── mozilla
     ├── dev.tsv
     ├── invalidated.tsv
@@ -34,7 +34,7 @@ data
     ├── other.tsv
     ├── test.tsv
     ├── train.tsv
-    ├── validated.tsv
+    └──  validated.tsv
 ```
 And run the following commands to process and collect all files.
 
