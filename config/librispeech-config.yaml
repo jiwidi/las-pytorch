@@ -1,7 +1,7 @@
 data:
     name: librispeech
     vocab: data/LibriSpeech/vocabulary.tsv
-    batch_size: 4
+    batch_size: 2
     text: character
     train: data/LibriSpeech/processed/train-clean-100_processed.tsv
     test: data/LibriSpeech/processed/test-clean_processed.tsv
@@ -31,7 +31,7 @@ model:
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
         listener_hidden_size: 512
-        max_label_len: 398
+        max_label_len: 576
 training:
     optimizer: 'adam'
     lr: 0.01

@@ -72,7 +72,7 @@ def main(args):
     train_loader = AudioDataLoader(
         train_dataset, shuffle=True, num_workers=params["data"]["num_works"]
     ).loader
-    dev_dataset = AudioDataset(params, "dev")
+    dev_dataset = AudioDataset(params, "test")
     dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
 
     print("---------------------------------------")
