@@ -145,11 +145,11 @@ def main(args):
             global_step += 1
             epoch_step += 1
             # print(batch_ler)
-
+            writer.add_scalar("loss/train-step", batch_loss, global_step)
         train_loss = np.array([sum(train_loss) / len(train_loss)])
         train_ler = np.array([sum(train_ler) / len(train_ler)])
-        writer.add_scalar("loss/train", train_loss, epoch)
-        writer.add_scalar("cer/train", train_ler, epoch)
+        writer.add_scalar("loss/train-epoch", train_loss, epoch)
+        writer.add_scalar("cer/train-epoch", train_ler, epoch)
         # Validation
         val_loss = []
         val_ler = []
