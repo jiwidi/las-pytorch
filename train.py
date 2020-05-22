@@ -6,7 +6,7 @@ from torch.distributions.categorical import Categorical
 from model.las_model import Listener, Speller, LAS
 from utils.utils import purge
 from torch.autograd import Variable
-from data import AudioDataLoader, AudioDataset
+from utils.data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
 from solver.solver import batch_iterator
 from sys import getsizeof
@@ -108,10 +108,11 @@ def main(args):
         train_loss = []
         train_ler = []
         batch_loss = 0
+
         for i, (data) in enumerate(train_loader):
             print(
                 f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-                # end="\r",
+                end="\r",
                 flush=True,
             )
 
@@ -124,9 +125,8 @@ def main(args):
                 labels = data[2]["targets"].cuda()
 
             # print(
-            #     f"For epoch {epoch} inputs has size {(inputs.element_size() * inputs.nelement())/1000000 }mb and labels has size {(labels.element_size() * labels.nelement())/1000000}mb"
+            #     f"For epoch {epoch} inputs has size {inputs.size() }mb and labels has size {labels.size()}mb"
             # )
-            # minibatch execution
 
             batch_loss, batch_ler = batch_iterator(
                 batch_data=inputs,
@@ -135,7 +135,7 @@ def main(args):
                 optimizer=optimizer,
                 tf_rate=tf_rate,
                 is_training=True,
-                max_label_len=params["data"]["vocab_size"],
+                max_label_len=params["model"]["speller"]["vocab_size"],
                 label_smoothing=params["training"]["label_smoothing"],
             )
 
@@ -170,7 +170,7 @@ def main(args):
                 optimizer=optimizer,
                 tf_rate=tf_rate,
                 is_training=True,
-                max_label_len=params["data"]["vocab_size"],
+                max_label_len=params["model"]["speller"]["vocab_size"],
                 label_smoothing=params["training"]["label_smoothing"],
             )
             val_loss.append(batch_loss)

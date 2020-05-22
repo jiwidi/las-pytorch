@@ -5,7 +5,7 @@ import torchaudio as ta
 from torch.utils.data import Dataset, DataLoader
 import enlighten
 import random
-from utils.utils import load_vocab
+from .utils import load_vocab
 import pdb
 
 compute_fbank = ta.compliance.kaldi.fbank
@@ -21,9 +21,14 @@ listener_layers = 5
 
 
 def OneHotEncode(idx, max_idx=42):
+    idx = int(idx)
     new_y = np.zeros(max_idx)
     new_y[idx] = 1
     return new_y
+
+
+def get_data(data_table, i):
+    return np.load(data_table.loc[i]["input"])
 
 
 class AudioDataset(Dataset):
@@ -40,19 +45,17 @@ class AudioDataset(Dataset):
         with open(params["data"][name], "r", encoding="utf-8") as t:
             next(t)  # Skip headers line
             for line in t:
-                parts = line.strip().split("\t")
+                parts = line.strip().split(",")
                 sid = parts[0]
                 path = parts[1]
-                sentence = parts[2]
-                label = []
-                for c in sentence:
-                    if c == " ":
-                        c = "<PAD>"
-                    index_char = self.char2idx[c] if c in self.char2idx else self.char2idx["UNK"]
-                    index_char_oh = OneHotEncode(index_char)
-                    label.append(index_char_oh)
+                label = parts[2]
+
+                label = [
+                    OneHotEncode(index_char, params["data"]["vocab_size"])
+                    for index_char in label.strip().split(" ")
+                ]
                 self.targets_dict[sid] = label
-                self.targets_real_target[sid] = sentence
+                # self.targets_real_target[sid] = sentence
                 self.file_list.append([sid, path])
                 # print(f"For sentence: {len(sentence)}")
                 # print(f"Generated   : {len(label)}")
@@ -62,18 +65,19 @@ class AudioDataset(Dataset):
     def __getitem__(self, index):
         utt_id, path = self.file_list[index]
 
-        wavform, sample_frequency = ta.load(path)
-        feature = compute_fbank(
-            wavform,
-            num_mel_bins=self.params["data"]["num_mel_bins"],
-            sample_frequency=sample_frequency,
-        )
+        # REAL TIME FEATURE TRANSFORM IS THIS WAY LEL
+        # wavform, sample_frequency = ta.load(path)
+        # feature = compute_fbank(
+        #     wavform,
+        #     num_mel_bins=self.params["data"]["num_mel_bins"],
+        #     sample_frequency=sample_frequency,
+        # )
+        feature = np.load(path)
 
         feature_length = feature.shape[0]
         targets = self.targets_dict[utt_id]
         targets_length = [len(i) for i in targets]
-        real_label = self.targets_real_target[utt_id]
-        # print(f"extracting target with {real_label}")
+
         return utt_id, feature, feature_length, targets, targets_length
 
     def __len__(self):

@@ -3,35 +3,35 @@ data:
     vocab: data/LibriSpeech/vocabulary.tsv
     batch_size: 2
     text: character
-    train: data/LibriSpeech/processed/train-clean-100_processed.tsv
-    test: data/LibriSpeech/processed/test-clean_processed.tsv
-    dev: data/LibriSpeech/processed/dev-clean_processed.tsv
+    train: data/LibriSpeech/processed/train.csv
+    test: data/LibriSpeech/processed/test.csv
+    dev: data/LibriSpeech/processed/dev.csv
     short_first: False
     num_mel_bins: 40
     num_works: 16
-    vocab_size: 42
+    vocab_size: 30
 model:
     listener:
         input_feature_dim: 40
-        hidden_size: 512
+        hidden_size: 256
         num_layers: 2
         dropout: 0.0
         bidirectional: True
         rnn_unit: "LSTM"
         use_gpu: True
     speller:
-        hidden_size: 1024
+        hidden_size: 512
         num_layers: 1
         bidirectional: True
         rnn_unit: "LSTM"
-        vocab_size: 42                             # 61 phonemes + 2 for <sos> & <eos>
+        vocab_size: 30                             # 61 phonemes + 2 for <sos> & <eos>
         multi_head: 1                               # Number of heads for multi-head attention
         decode_mode: 1                              # Decoding mode, 0 : feed char distribution to next timestep, 1: feed argmax, 2: feed sampled vector
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 512
-        max_label_len: 576
+        listener_hidden_size: 256
+        max_label_len: 300
 training:
     optimizer: 'adam'
     lr: 0.01
