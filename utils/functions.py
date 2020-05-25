@@ -112,9 +112,9 @@ def mp32wav(f_path):
     mp3_audio.export(f_path[:-4] + ".wav", format="wav")
 
 
-def wav2logfbank(f_path, win_size, n_filters):
+def wav2logfbank(f_path, win_size, n_filters, nfft=512):
     (rate, sig) = wav.read(f_path)
-    fbank_feat = logfbank(sig, rate, winlen=win_size, nfilt=n_filters)
+    fbank_feat = logfbank(sig, rate, winlen=win_size, nfilt=n_filters, nfft=nfft)
     os.remove(f_path)
     np.save(f_path[:-3] + "fb" + str(n_filters), fbank_feat)
 

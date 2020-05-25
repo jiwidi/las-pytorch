@@ -101,12 +101,14 @@ def main(args):
 
     print("Training", flush=True)
     results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(tr_file_list)
+        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters, nfft=2048)
+        for i in tqdm(tr_file_list)
     )
 
     print("Test clean", flush=True)
     results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(test_file_list)
+        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters, nfft=2048)
+        for i in tqdm(test_file_list)
     )
 
     # # log-mel fbank 2 feature
