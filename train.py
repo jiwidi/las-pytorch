@@ -81,7 +81,9 @@ def main(args):
     listener = Listener(**params["model"]["listener"])
     speller = Speller(**params["model"]["speller"])
     las = LAS(listener, speller)
-
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        las = nn.DataParallel(las)
     print(las)
     las.cuda()
     # Create optimizer

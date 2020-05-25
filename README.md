@@ -26,7 +26,7 @@ data
 │   ├── README.TXT
 │   ├── SPEAKERS.TXT
 │   ├── test-clean/
-│   └──  train-clean-100/
+│   └── train-clean-100/
 └── mozilla
     ├── dev.tsv
     ├── invalidated.tsv

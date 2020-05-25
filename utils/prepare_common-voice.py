@@ -57,7 +57,7 @@ def main(args):
     train_path = ["train.tsv"]
     dev_path = ["dev.tsv"]
     test_path = ["test.tsv"]
-    n_jobs = args.n_jobs
+    n_jobs = int(args.n_jobs)
     n_filters = args.n_filters
     win_size = args.win_size
     norm_x = args.norm_x
@@ -79,30 +79,16 @@ def main(args):
     tr_df["sentence"] = tr_df["sentence"].apply(
         lambda val: unicodedata.normalize("NFKD", val).encode("ascii", "ignore").decode()
     )
-    tr_df = tr_df.head()
     tr_df["path"] = root + "clips/" + tr_df["path"]
     tr_file_list = tr_df["path"].values
     results = Parallel(n_jobs=n_jobs, backend="threading")(
         delayed(mp32wav)(i) for i in tqdm(tr_file_list)
     )
-    print("Validation", flush=True)
-    dev_df = pd.read_csv(root + dev_path[0], sep="\t")
-    dev_df["sentence"] = dev_df["sentence"].apply(
-        lambda val: unicodedata.normalize("NFKD", val).encode("ascii", "ignore").decode()
-    )
-    dev_df = dev_df.head(5)
-    dev_df["path"] = root + "clips/" + dev_df["path"]
-    dev_file_list = dev_df["path"].values
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(mp32wav)(i) for i in tqdm(dev_file_list)
-    )
-
     print("Testing clean", flush=True)
     test_df = pd.read_csv(root + dev_path[0], sep="\t")
     test_df["sentence"] = test_df["sentence"].apply(
         lambda val: unicodedata.normalize("NFKD", val).encode("ascii", "ignore").decode()
     )
-    test_df = test_df.head(5)
     test_df["path"] = root + "clips/" + test_df["path"]
     test_file_list = test_df["path"].values
     results = Parallel(n_jobs=n_jobs, backend="threading")(
@@ -118,15 +104,10 @@ def main(args):
         delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(tr_file_list)
     )
 
-    print("Validation", flush=True)
+    print("Test clean", flush=True)
     results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(dev_file_list)
+        delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(test_file_list)
     )
-
-    # print("Test clean", flush=True)
-    # results = Parallel(n_jobs=n_jobs, backend="threading")(
-    #     delayed(wav2logfbank)(i[:-3] + "wav", win_size, n_filters) for i in tqdm(test_file_list)
-    # )
 
     # # log-mel fbank 2 feature
     print("---------------------------------------")
@@ -158,36 +139,6 @@ def main(args):
             f.write(str(i) + ",")
             f.write(tr_file_list[i] + ",")
             for char in tr_text[i]:
-                f.write(" " + str(char))
-            f.write("\n")
-
-    print()
-    print("Preparing Validation Dataset...", flush=True)
-
-    dev_file_list = dev_df["path"].str.replace("mp3", "fb" + str(n_filters) + ".npy").values
-    dev_text = dev_df["sentence"].str.lower().replace("[^a-zA-Z0-9 ]", "", regex=True).values
-
-    # text to index sequence
-    tmp_list = []
-    for text in dev_text:
-        tmp = []
-        for char in text:
-            tmp.append(char_map[char])
-        tmp_list.append(tmp)
-    dev_text = tmp_list
-    del tmp_list
-
-    # write dataset
-    file_name = "dev.csv"
-
-    print("Writing dataset to " + target_path + file_name + "...", flush=True)
-
-    with open(target_path + file_name, "w") as f:
-        f.write("idx,input,label\n")
-        for i in range(len(dev_file_list)):
-            f.write(str(i) + ",")
-            f.write(dev_file_list[i] + ",")
-            for char in dev_text[i]:
                 f.write(" " + str(char))
             f.write("\n")
 
