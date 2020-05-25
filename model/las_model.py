@@ -11,7 +11,7 @@ from torch.distributions.categorical import Categorical
 import sys
 
 sys.path.append("..")
-from utils.utils import CreateOnehotVariable, TimeDistributed
+from utils.functions import CreateOnehotVariable, TimeDistributed
 import numpy as np
 import pdb
 

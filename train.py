@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from model.las_model import Listener, Speller, LAS
-from utils.utils import purge
+from utils.functions import purge
 from torch.autograd import Variable
 from utils.data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -160,6 +160,7 @@ def main(args):
                 end="\r",
                 flush=True,
             )
+
             inputs = data[1]["inputs"].cuda()
             labels = data[2]["targets"].cuda()
 

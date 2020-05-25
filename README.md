@@ -36,13 +36,22 @@ data
     ├── train.tsv
     └──  validated.tsv
 ```
+
+So run
+```
+
+#Remove flags if you want to avoid download that specific dataset
+$ python utils/download_data.py --libri --common
+```
+
 And run the following commands to process and collect all files.
 
 ```
-$ python prepare_data-libri.py
-$ python prepare_data-common-voice.py
+#Still in utils/
+$ python utils/prepare_librispeech.py --root $ABSOLUTEPATH TO DATASET
+$ python uitls/prepare_common-voice.py --root $ABSOLUTEPATH TO DATASET
 ```
-This will create a `processed/` folder inside each of the datasets folders along with vocabulary and word count files.
+This will create a `processed/` folder inside each of the datassets containing the csvs with teh data neccesary to train along vocabulary and word count files.
 
 ### Training
 Execute the train script along with the yaml config file for the desired dataset.

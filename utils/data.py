@@ -5,7 +5,7 @@ import torchaudio as ta
 from torch.utils.data import Dataset, DataLoader
 import enlighten
 import random
-from .utils import load_vocab
+from .functions import load_vocab
 import pdb
 
 compute_fbank = ta.compliance.kaldi.fbank
@@ -35,7 +35,7 @@ class AudioDataset(Dataset):
     def __init__(self, params, name="train"):
         self.params = params
         # Vocabulary dictionary, character to idx
-        self.char2idx = load_vocab(params["data"]["vocab"])
+        # self.char2idx = load_vocab(params["data"]["vocab"])
         self.batch_size = params["data"]["batch_size"]
         listener_layers = params["model"]["listener"]["num_layers"]
         # The files paths and id
@@ -50,10 +50,6 @@ class AudioDataset(Dataset):
                 path = parts[1]
                 label = parts[2]
 
-                label = [
-                    OneHotEncode(index_char, params["data"]["vocab_size"])
-                    for index_char in label.strip().split(" ")
-                ]
                 self.targets_dict[sid] = label
                 # self.targets_real_target[sid] = sentence
                 self.file_list.append([sid, path])
@@ -76,6 +72,10 @@ class AudioDataset(Dataset):
 
         feature_length = feature.shape[0]
         targets = self.targets_dict[utt_id]
+        targets = [
+            OneHotEncode(index_char, self.params["data"]["vocab_size"])
+            for index_char in targets.strip().split(" ")
+        ]
         targets_length = [len(i) for i in targets]
 
         return utt_id, feature, feature_length, targets, targets_length

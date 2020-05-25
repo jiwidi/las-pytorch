@@ -1,14 +1,14 @@
 data:
     name: librispeech
     vocab: data/LibriSpeech/vocabulary.tsv
-    batch_size: 2
+    batch_size: 1
     text: character
     train: data/LibriSpeech/processed/train.csv
-    test: data/LibriSpeech/processed/test.csv
+    test: data/LibriSpeech/processed/test-clean.csv
     dev: data/LibriSpeech/processed/dev.csv
     short_first: False
     num_mel_bins: 40
-    num_works: 16
+    num_works: 8
     vocab_size: 30
 model:
     listener:
@@ -31,7 +31,7 @@ model:
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
         listener_hidden_size: 256
-        max_label_len: 300
+        max_label_len: 576
 training:
     optimizer: 'adam'
     lr: 0.01
