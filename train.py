@@ -140,7 +140,7 @@ def main(args):
                 max_label_len=params["model"]["speller"]["vocab_size"],
                 label_smoothing=params["training"]["label_smoothing"],
             )
-
+            torch.cuda.empty_cache()
             train_loss.append(batch_loss)
             train_ler.extend(batch_ler)
 
