@@ -141,14 +141,16 @@ def main(args):
                 label_smoothing=params["training"]["label_smoothing"],
             )
             torch.cuda.empty_cache()
-            batch_ler = np.array(batch_ler)
+            # batch_ler = np.array(batch_ler)
             train_loss.append(batch_loss)
             train_ler.extend(batch_ler)
             global_step += 1
             epoch_step += 1
             # print(batch_ler)
             writer.add_scalar("loss/train-step", batch_loss, global_step)
-            writer.add_scalar("ler/train-step", batch_ler, global_step)
+            writer.add_scalar(
+                "ler/train-step", np.array([sum(train_ler) / len(train_ler)]), global_step
+            )
         train_loss = np.array([sum(train_loss) / len(train_loss)])
         train_ler = np.array([sum(train_ler) / len(train_ler)])
         writer.add_scalar("loss/train-epoch", train_loss, epoch)
