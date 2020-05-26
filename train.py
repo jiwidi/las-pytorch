@@ -87,10 +87,7 @@ def main(args):
     print(las)
     las.cuda()
     # Create optimizer
-    optimizer = torch.optim.Adam(
-        [{"params": listener.parameters()}, {"params": speller.parameters()}],
-        lr=params["training"]["lr"],
-    )
+    optimizer = torch.optim.Adam(params=las.parameters(), lr=params["training"]["lr"],)
     if params["training"]["continue_from"]:
         print("Loading checkpoint model %s" % params["training"]["continue_from"])
         package = torch.load(params["training"]["continue_from"])
@@ -103,6 +100,9 @@ def main(args):
     print("---------------------------------------")
     print("Training...", flush=True)
 
+    # import pdb
+
+    # pdb.set_trace()
     global_step = 0
     best_cv_loss = 10e5
     for epoch in range(start_epoch, epochs):
@@ -141,17 +141,18 @@ def main(args):
                 label_smoothing=params["training"]["label_smoothing"],
             )
             torch.cuda.empty_cache()
+            batch_ler = np.array(batch_ler)
             train_loss.append(batch_loss)
             train_ler.extend(batch_ler)
-
             global_step += 1
             epoch_step += 1
             # print(batch_ler)
             writer.add_scalar("loss/train-step", batch_loss, global_step)
+            writer.add_scalar("ler/train-step", batch_ler, global_step)
         train_loss = np.array([sum(train_loss) / len(train_loss)])
         train_ler = np.array([sum(train_ler) / len(train_ler)])
         writer.add_scalar("loss/train-epoch", train_loss, epoch)
-        writer.add_scalar("cer/train-epoch", train_ler, epoch)
+        writer.add_scalar("ler/train-epoch", train_ler, epoch)
         # Validation
         val_loss = []
         val_ler = []
@@ -183,7 +184,7 @@ def main(args):
         val_loss = np.array([sum(val_loss) / len(val_loss)])
         val_ler = np.array([sum(val_ler) / len(val_ler)])
         writer.add_scalar("loss/dev", val_loss, epoch)
-        writer.add_scalar("cer/dev", val_ler, epoch)
+        writer.add_scalar("ler/dev", val_ler, epoch)
 
         # Checkpoint saving model each epoch and keeping only last 10 epochs
         if params["training"]["checkpoint"]:
