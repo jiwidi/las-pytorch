@@ -92,7 +92,7 @@ def batch_iterator(
 
     if is_training:
         loss.backward()
-        # torch.nn.utils.clip_grad_norm(las_model.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(las_model.parameters(), 1)
         optimizer.step()
 
     batch_loss = loss.cpu().data.numpy()
