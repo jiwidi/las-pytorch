@@ -1,7 +1,7 @@
 data:
     name: librispeech
     vocab: data/LibriSpeech/vocabulary.tsv
-    batch_size: 16
+    batch_size: 2
     text: character
     train: data/LibriSpeech/processed/train.csv
     test: data/LibriSpeech/processed/test-clean.csv
