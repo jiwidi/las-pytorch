@@ -24,6 +24,12 @@ def LetterErrorRate(pred_y, true_y):
     return ed_accumalate
 
 
+def tensor2text(y, vocab):
+    rounded_y = np.around(y).astype(int)
+    rounded_y = np.array([vocab[str(n)] for n in rounded_y])
+    return rounded_y
+
+
 def label_smoothing_loss(pred_y, true_y, label_smoothing=0.1):
     # Self defined loss for label smoothing
     # pred_y is log-scaled and true_y is one-hot format padded with all zero vector
@@ -32,9 +38,7 @@ def label_smoothing_loss(pred_y, true_y, label_smoothing=0.1):
 
     # calculate smoothen label, last term ensures padding vector remains all zero
     class_dim = true_y.size()[-1]
-    smooth_y = ((1.0 - label_smoothing) * true_y + (label_smoothing / class_dim)) * torch.sum(
-        true_y, dim=-1, keepdim=True
-    )
+    smooth_y = ((1.0 - label_smoothing) * true_y + (label_smoothing / class_dim)) * torch.sum(true_y, dim=-1, keepdim=True)
 
     loss = -torch.mean(torch.sum((torch.sum(smooth_y * pred_y, dim=-1) / seq_len), dim=-1))
 
@@ -51,6 +55,7 @@ def batch_iterator(
     max_label_len,
     label_smoothing,
     use_gpu=True,
+    vocab_dict=None,
 ):
     label_smoothing = label_smoothing
     max_label_len = min([batch_label.size()[1], max_label_len])
@@ -58,14 +63,9 @@ def batch_iterator(
     optimizer.zero_grad()
 
     raw_pred_seq, _ = las_model(
-        batch_data=batch_data,
-        batch_label=batch_label,
-        teacher_force_rate=tf_rate,
-        is_training=is_training,
+        batch_data=batch_data, batch_label=batch_label, teacher_force_rate=tf_rate, is_training=is_training,
     )
-    pred_y = (
-        torch.cat([torch.unsqueeze(each_y, 1) for each_y in raw_pred_seq], 1)[:, :max_label_len, :]
-    ).contiguous()
+    pred_y = (torch.cat([torch.unsqueeze(each_y, 1) for each_y in raw_pred_seq], 1)[:, :max_label_len, :]).contiguous()
 
     if label_smoothing == 0.0 or not (is_training):
         pred_y = pred_y.permute(0, 2, 1)  # pred_y.contiguous().view(-1,output_class_dim)
@@ -74,9 +74,7 @@ def batch_iterator(
         loss = criterion(pred_y, true_y)
         # variable -> numpy before sending into LER calculator
         batch_ler = LetterErrorRate(
-            torch.max(pred_y.permute(0, 2, 1), dim=2)[1]
-            .cpu()
-            .numpy(),  # .reshape(current_batch_size,max_label_len),
+            torch.max(pred_y.permute(0, 2, 1), dim=2)[1].cpu().numpy(),  # .reshape(current_batch_size,max_label_len),
             true_y.cpu().data.numpy(),
         )  # .reshape(current_batch_size,max_label_len), data)
 
@@ -88,6 +86,7 @@ def batch_iterator(
         # print(true_y)
         # print("vs")
         # print(pred_y)
+        # pdb.set_trace()
         batch_ler = LetterErrorRate(
             torch.max(pred_y, dim=2)[1].cpu().numpy(),  # .reshape(current_batch_size,max_label_len),
             torch.max(true_y, dim=2)[1].cpu().data.numpy(),

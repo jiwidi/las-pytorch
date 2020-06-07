@@ -1,10 +1,10 @@
 data:
     name: librispeech
-    vocab: data/LibriSpeech/vocabulary.tsv
+    vocab: data/LibriSpeech/processed/idx2chap.csv
     batch_size: 4
     text: character
     train: data/LibriSpeech/processed/train.csv
-    test: data/LibriSpeech/processed/test-clean.csv
+    test: data/LibriSpeech/processed/test-other.csv
     dev: data/LibriSpeech/processed/dev.csv
     short_first: False
     num_mel_bins: 40

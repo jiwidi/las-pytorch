@@ -35,8 +35,10 @@ class AudioDataset(Dataset):
     def __init__(self, params, name="train"):
         self.params = params
         # Vocabulary dictionary, character to idx
-        # self.char2idx = load_vocab(params["data"]["vocab"])
+        self.char2idx = load_vocab(params["data"]["vocab"])
         self.batch_size = params["data"]["batch_size"]
+        if name == "test":
+            self.batch_size = 2
         listener_layers = params["model"]["listener"]["num_layers"]
         # The files paths and id
         self.targets_dict = {}

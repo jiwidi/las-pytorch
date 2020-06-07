@@ -40,8 +40,8 @@ def load_vocab(vocab_file):
     unit2idx = {}
     with open(os.path.join(vocab_file), "r", encoding="utf-8") as v:
         for line in v:
-            unit, idx = line.strip().split()
-            unit2idx[unit] = int(idx)
+            idx, char = line.strip().split(",")
+            unit2idx[str(idx)] = char
     return unit2idx
 
 
@@ -58,9 +58,7 @@ def CreateOnehotVariable(input_x, encoding_dim=63):
     batch_size = input_x.size(0)
     time_steps = input_x.size(1)
     input_x = input_x.unsqueeze(2).type(torch.LongTensor)
-    onehot_x = Variable(
-        torch.LongTensor(batch_size, time_steps, encoding_dim).zero_().scatter_(-1, input_x, 1)
-    ).type(input_type)
+    onehot_x = Variable(torch.LongTensor(batch_size, time_steps, encoding_dim).zero_().scatter_(-1, input_x, 1)).type(input_type)
 
     return onehot_x
 
@@ -88,9 +86,7 @@ def traverse(root, path, search_fix=".flac", return_label=False):
             for sub2_p in sorted(os.listdir(p + sub_p + "/")):
                 if return_label:
                     # Read trans txt
-                    with open(
-                        p + sub_p + "/" + sub2_p + "/" + sub_p + "-" + sub2_p + ".trans.txt", "r"
-                    ) as txt_file:
+                    with open(p + sub_p + "/" + sub2_p + "/" + sub_p + "-" + sub2_p + ".trans.txt", "r") as txt_file:
                         for line in txt_file:
                             f_list.append(" ".join(line[:-1].split(" ")[1:]))
                 else:

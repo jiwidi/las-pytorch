@@ -28,11 +28,7 @@ parser.add_argument(
     help="number of cpu availible for preprocessing.\n -1: use all cpu, -2: use all cpu but one",
 )
 parser.add_argument(
-    "--n_filters",
-    dest="n_filters",
-    action="store",
-    default=40,
-    help="number of filters for fbank. (Default : 40)",
+    "--n_filters", dest="n_filters", action="store", default=40, help="number of filters for fbank. (Default : 40)",
 )
 parser.add_argument(
     "--win_size",
@@ -42,18 +38,14 @@ parser.add_argument(
     help="window size during feature extraction (Default : 0.025 [25ms])",
 )
 parser.add_argument(
-    "--norm_x",
-    dest="norm_x",
-    action="store",
-    default=False,
-    help="Normalize features s.t. mean = 0 std = 1",
+    "--norm_x", dest="norm_x", action="store", default=False, help="Normalize features s.t. mean = 0 std = 1",
 )
 
 
 def main(args):
     root = args.root
     target_path = root + "/processed/"
-    train_path = ["train-clean-100/", "train-clean-360/", "train-other-500/"]
+    train_path = ["train-clean-100/"]  # , "train-clean-360/", "train-other-500/"]
     dev_path = ["dev-clean/", "dev-other/"]
     test_clean_path = ["test-clean/"]
     test_other_path = ["test-other/"]
@@ -77,27 +69,19 @@ def main(args):
 
     print("Training", flush=True)
     tr_file_list = traverse(root, train_path)
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(flac2wav)(i) for i in tqdm(tr_file_list)
-    )
+    results = Parallel(n_jobs=n_jobs, backend="threading")(delayed(flac2wav)(i) for i in tqdm(tr_file_list))
 
     print("Validation", flush=True)
     dev_file_list = traverse(root, dev_path)
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(flac2wav)(i) for i in tqdm(dev_file_list)
-    )
+    results = Parallel(n_jobs=n_jobs, backend="threading")(delayed(flac2wav)(i) for i in tqdm(dev_file_list))
 
     print("Testing clean", flush=True)
     tt_clean_file_list = traverse(root, test_clean_path)
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(flac2wav)(i) for i in tqdm(tt_clean_file_list)
-    )
+    results = Parallel(n_jobs=n_jobs, backend="threading")(delayed(flac2wav)(i) for i in tqdm(tt_clean_file_list))
 
     print("Testing other", flush=True)
     tt_other_file_list = traverse(root, test_other_path)
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(flac2wav)(i) for i in tqdm(tt_other_file_list)
-    )
+    results = Parallel(n_jobs=n_jobs, backend="threading")(delayed(flac2wav)(i) for i in tqdm(tt_other_file_list))
 
     # # wav 2 log-mel fbank
     print("---------------------------------------")
