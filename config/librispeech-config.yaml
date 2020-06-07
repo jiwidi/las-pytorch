@@ -1,7 +1,7 @@
 data:
     name: librispeech
     vocab: data/LibriSpeech/vocabulary.tsv
-    batch_size: 2
+    batch_size: 4
     text: character
     train: data/LibriSpeech/processed/train.csv
     test: data/LibriSpeech/processed/test-clean.csv
@@ -13,14 +13,14 @@ data:
 model:
     listener:
         input_feature_dim: 40
-        hidden_size: 1024
+        hidden_size: 128
         num_layers: 2
         dropout: 0.0
         bidirectional: True
         rnn_unit: "LSTM"
         use_gpu: True
     speller:
-        hidden_size: 2048
+        hidden_size: 256
         num_layers: 2
         bidirectional: True
         rnn_unit: "LSTM"
@@ -30,7 +30,7 @@ model:
         use_mlp_in_attention: True                  # Set to False to exclude phi and psi in attention formula
         mlp_dim_in_attention: 64                   #
         mlp_activate_in_attention: 'relu'           #
-        listener_hidden_size: 1024
+        listener_hidden_size: 128
         max_label_len: 576
 training:
     optimizer: 'adam'

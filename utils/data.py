@@ -72,10 +72,7 @@ class AudioDataset(Dataset):
 
         feature_length = feature.shape[0]
         targets = self.targets_dict[utt_id]
-        targets = [
-            OneHotEncode(index_char, self.params["data"]["vocab_size"])
-            for index_char in targets.strip().split(" ")
-        ]
+        targets = [OneHotEncode(index_char, self.params["data"]["vocab_size"]) for index_char in targets.strip().split(" ")]
         targets_length = [len(i) for i in targets]
 
         return utt_id, feature, feature_length, targets, targets_length
@@ -96,14 +93,7 @@ def collate_fn_with_eos_bos(batch):
 
     i = 0
     for _, feat, feat_len, target, target_len in batch:
-        padded_features.append(
-            np.pad(
-                feat,
-                ((0, max_feature_length - feat_len), (0, 0)),
-                mode="constant",
-                constant_values=0.0,
-            )
-        )
+        padded_features.append(np.pad(feat, ((0, max_feature_length - feat_len), (0, 0)), mode="constant", constant_values=0.0,))
         padded_targets.append([BOS] + target + [EOS] + [PAD] * (max_target_length - target_len[i]))
         i += 1
 
@@ -137,17 +127,8 @@ def collate_fn(batch):
 
     i = 0
     for _, feat, feat_len, target, target_len in batch:
-        padded_features.append(
-            np.pad(
-                feat,
-                ((0, max_feature_length - feat_len), (0, 0)),
-                mode="constant",
-                constant_values=0.0,
-            )
-        )
-        tar_padds = [
-            OneHotEncode(PAD, len(target[1])) for u in range((max_target_length - len(target)))
-        ]
+        padded_features.append(np.pad(feat, ((0, max_feature_length - feat_len), (0, 0)), mode="constant", constant_values=0.0,))
+        tar_padds = [OneHotEncode(PAD, 30) for u in range((max_target_length - len(target)))]
         # print(len(target))
         # print(len(target[1]))
         padded_targets.append(target + tar_padds)
@@ -183,7 +164,7 @@ class AudioDataLoader(object):
             batch_size=dataset.batch_size * ngpu,
             shuffle=shuffle,
             num_workers=num_workers * ngpu,
-            pin_memory=False,
+            pin_memory=True,
             sampler=self.sampler,
             collate_fn=collate_fn_with_eos_bos if include_eos_sos else collate_fn,
         )
