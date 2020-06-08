@@ -8,7 +8,27 @@ The feature transformation is done on the fly while loading the files thanks to 
 
 ## Results
 
-Still training lel
+This are the LER (letter error rate) and loss metrics for 4 epochs of training with a considerably smaller architecture since my gpu didnt have enough memory. Listener had 128 neurons and 2 layers while the Speller had 256 neurons with 2 layers as well.
+
+We can see how the model is able to learn from the data we are feeding to it but it still needs more training and a proper architecture.
+|  Letter error rate  |         Loss          |
+| :-----------------: | :-------------------: |
+| ![LER](img/ler.png) | ![LOSS](img/loss.png) |
+
+
+If we try to predict a sample of audio the results now look like:
+
+`true_y`: ['A', 'N', 'D', '', 'S', 'T', 'I', 'L', 'L', '', 'N', 'O', '', 'A',
+       'T', 'T', 'E', 'M', 'P', 'T', '', 'B', 'Y', '', 'T', 'H', 'E', '',
+       'P', 'O']
+
+`pred_y`:['A', 'N', 'D', '', 'T', 'H', 'E', 'L', 'L', '', 'T', 'O', 'T', 'M',
+       '', 'T', 'E', 'N', 'P', 'T', '', 'O', 'E', '', 'T', 'H', 'E', '',
+       'S', 'R']
+
+Only the conjunction are being properly indentified, this led us to think the model needs higher training times to be able to learn more specific words.
+
+#Will train more and update results here, still looking for credits in cloud compute
 
 ## How to run it
 

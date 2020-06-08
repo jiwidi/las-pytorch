@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from model.las_model import Listener, Speller, LAS
-from utils.functions import purge
+from utils.functions import purge, load_vocab
 from torch.autograd import Variable
 from utils.data import AudioDataLoader, AudioDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -19,6 +19,7 @@ import argparse
 import pdb
 import sys
 from tqdm import tqdm
+
 
 # Set cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -97,7 +98,6 @@ def main(args):
     # pdb.set_trace()
     global_step = 0 + (len(train_loader) * start_epoch)
     best_cv_loss = 10e5
-    my_fields = {"loss": 0}
     for epoch in tqdm(range(start_epoch, epochs), desc="Epoch training"):
         epoch_step = 0
         train_loss = []
@@ -109,7 +109,6 @@ def main(args):
             #     end="\r",
             #     flush=True,
             # )
-            my_fields["loss"] = batch_loss
             # Adjust LR
             tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
                 (float(global_step) / tf_decay_step), 1
@@ -129,7 +128,8 @@ def main(args):
                 label_smoothing=params["training"]["label_smoothing"],
                 vocab_dict=train_dataset.char2idx,
             )
-            if i % 100 == 0:
+            if i % 10 == 0 and i > 1:
+                break
                 torch.cuda.empty_cache()
             train_loss.append(batch_loss)
             train_ler.extend(batch_ler)
@@ -163,7 +163,7 @@ def main(args):
                 las_model=las,
                 optimizer=optimizer,
                 tf_rate=tf_rate,
-                is_training=False,
+                is_training=false,
                 max_label_len=params["model"]["speller"]["vocab_size"],
                 label_smoothing=params["training"]["label_smoothing"],
                 vocab_dict=dev_dataset.char2idx,
@@ -210,3 +210,4 @@ def main(args):
 if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
+    pdb.set_trace()
