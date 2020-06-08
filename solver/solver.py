@@ -86,7 +86,6 @@ def batch_iterator(
         # print(true_y)
         # print("vs")
         # print(pred_y)
-        pdb.set_trace()
         batch_ler = LetterErrorRate(
             torch.max(pred_y, dim=2)[1].cpu().numpy(),  # .reshape(current_batch_size,max_label_len),
             torch.max(true_y, dim=2)[1].cpu().data.numpy(),
