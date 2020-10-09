@@ -1,212 +1,113 @@
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
-from model.las_model import Listener, Speller, LAS
-from utils.functions import purge
-from torch.autograd import Variable
-from utils.data import AudioDataLoader, AudioDataset
-from torch.utils.tensorboard import SummaryWriter
-from solver.solver import batch_iterator
-from sys import getsizeof
-import numpy as np
-import yaml
+"""
+Runs a model on a single node across multiple gpus.
+"""
 import os
+import numpy as np
+import warnings
 import random
-import enlighten
-import argparse
-import pdb
-import sys
-from tqdm import tqdm
+import torch
 
-# Set cuda device
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from argparse import ArgumentParser
+from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, LearningRateLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 
+from project.model.deepspeech_main import DeepSpeech
 
-parser = argparse.ArgumentParser(description="Training script for LAS on Librispeech .")
-parser.add_argument(
-    "--config_path", metavar="config_path", type=str, help="Path to config file for training.", required=True,
-)
-parser.add_argument(
-    "--experiment_name", metavar="experiment_name", type=str, help="Name for tensorboard logs", default="",
-)
+#warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.simplefilter("ignore", UserWarning)
+
+seed = 17
+np.random.seed(seed)
+torch.manual_seed(seed)
+random.seed(seed)
+seed_everything(seed)
 
 
 def main(args):
-    # Tensorboard logging
-    # Writer will output to ./runs/ directory by default
-    writer = SummaryWriter(comment=args.experiment_name)
-    # Fix seed
-    seed = 17
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    random.seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    """ Main training routine specific for this project. """
+    # ------------------------
+    # 1 INIT LIGHTNING MODEL
+    # ------------------------
+    model = DeepSpeech(**vars(args))
+    # ------------------------
+    # 2 INIT LOGGERS and special CALLBACKS
+    # ------------------------
+    # Early stopper
+    early_stop = EarlyStopping(
+        monitor=args.early_stop_metric,
+        patience=args.early_stop_patience,
+        verbose=True,
+    )
+    # Checkpoint manager
+    checkpoint_callback = ModelCheckpoint(
+        verbose=True,
+        save_top_k=5,  # Save 5 Top models
+        monitor="wer",
+        mode="min",
+        period=1,
+    )
+    # Loggers
+    logger = TensorBoardLogger(save_dir=args.logs_path, name=args.experiment_name)
+    lr_logger = LearningRateLogger(logging_interval='step')
+    # ------------------------
+    # 3 INIT TRAINER
+    # ------------------------
+    trainer = Trainer(
+                    gradient_clip_val=0,
+                    auto_scale_batch_size=False,
+                    gpus=0,
+                    auto_select_gpus=True,
+                    log_gpu_memory=True,
+                    # precision=args.precision,
+                    logger=logger,
+                    row_log_interval = args.batch_size,
+                    early_stop_callback = early_stop,
+                    checkpoint_callback= checkpoint_callback,
+                    callbacks=[lr_logger],
+                    fast_dev_run=False,
+                    # resume_from_checkpoint='/mnt/data/github/DeepSpeech-pytorch/runs/DeepSpeech_onecycle_defaultbits/version_1/checkpoints/epoch=12.ckpt',
+                    # auto_lr_find='learning_rate',
+                    )
+    # ------------------------
+    # 4 START TRAINING
+    # ------------------------
+    trainer.fit(model)
 
-    print("---------------------------------------")
-    print("Loading Config...", flush=True)
-    # Load config file for experiment
-    config_path = args.config_path
-    print("Loading configure file at", config_path)
-    with open(config_path, "r") as f:
-        params = yaml.load(f, Loader=yaml.FullLoader)
-    data_name = params["data"]["name"]
+def run_cli():
+    # ------------------------
+    # TRAINING ARGUMENTS
+    # ------------------------
+    # these are project-wide arguments
+    root_dir = os.path.dirname(os.path.realpath(__file__))
+    parent_parser = ArgumentParser(add_help=False)
+    #Model parser
+    parser = DeepSpeech.add_model_specific_args(parent_parser)
+    # Data
+    parser.add_argument("--num_workers", default=4, type=int)
+    parser.add_argument("--batch_size", default=40, type=int)
+    parser.add_argument("--data_root", default="/mnt/data/github/DeepSpeech-pytorch/data/", type=str)
+    parser.add_argument("--data_train", default=["train-clean-100", "train-clean-360", "train-other-500"])
+    parser.add_argument("--data_test", default=["test-clean"])
+    # Training params (opt)
+    parser.add_argument("--epochs", default=100, type=int)
+    parser.add_argument("--learning_rate", default=0.0005, type=float)
+    #parser.add_argument("--precission", default=16, type=int)
+    parser.add_argument("--early_stop_metric", default="wer", type=str)
+    parser.add_argument("--logs_path", default="runs/", type=str)
+    parser.add_argument("--experiment_name", default="DeepSpeech", type=str)
+    parser.add_argument("--early_stop_patience", default=3, type=int)
+    parser.add_argument("--resume_from_checkpoint", default=None, type=str)
+    #Precission args
+    parser.add_argument("--amp_level", default='02', type=str)
+    parser.add_argument("--precision", default=32, type=int)
 
-    tf_rate_upperbound = params["training"]["tf_rate_upperbound"]
-    tf_rate_lowerbound = params["training"]["tf_rate_lowerbound"]
-    tf_decay_step = params["training"]["tf_decay_step"]
-    epochs = params["training"]["epochs"]
-
-    # Load datasets
-    print("---------------------------------------")
-    print("Processing datasets...", flush=True)
-    train_dataset = AudioDataset(params, "train")
-    train_loader = AudioDataLoader(train_dataset, shuffle=True, num_workers=params["data"]["num_works"]).loader
-    dev_dataset = AudioDataset(params, "test")
-    dev_loader = AudioDataLoader(dev_dataset, num_workers=params["data"]["num_works"]).loader
-
-    print("---------------------------------------")
-    print("Creating model architecture...", flush=True)
-    # Create listener and speller
-    listener = Listener(**params["model"]["listener"])
-    speller = Speller(**params["model"]["speller"])
-    las = LAS(listener, speller)
-    if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        las = nn.DataParallel(las)
-    print(las)
-    las.cuda()
-    # Create optimizer
-    optimizer = torch.optim.Adam(params=las.parameters(), lr=params["training"]["lr"],)
-    if params["training"]["continue_from"]:
-        print("Loading checkpoint model %s" % params["training"]["continue_from"])
-        package = torch.load(params["training"]["continue_from"])
-        las.load_state_dict(package["state_dict"])
-        optimizer.load_state_dict(package["optim_dict"])
-        start_epoch = int(package.get("epoch", 1))
-    else:
-        start_epoch = 0
-
-    print("---------------------------------------")
-    print("Training...", flush=True)
-
-    # import pdb
-
-    # pdb.set_trace()
-    global_step = 0 + (len(train_loader) * start_epoch)
-    best_cv_loss = 10e5
-    my_fields = {"loss": 0}
-    for epoch in tqdm(range(start_epoch, epochs), desc="Epoch training"):
-        epoch_step = 0
-        train_loss = []
-        train_ler = []
-        batch_loss = 0
-        for i, (data) in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch number {epoch}"):
-            # print(
-            #     f"Current Epoch: {epoch} Loss {np.round(batch_loss, 3)} | Epoch step: {epoch_step}/{len(train_loader)}",
-            #     end="\r",
-            #     flush=True,
-            # )
-            my_fields["loss"] = batch_loss
-            # Adjust LR
-            tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
-                (float(global_step) / tf_decay_step), 1
-            )
-            with torch.no_grad():
-                inputs = data[1]["inputs"].cuda()
-                labels = data[2]["targets"].cuda()
-
-            batch_loss, batch_ler = batch_iterator(
-                batch_data=inputs,
-                batch_label=labels,
-                las_model=las,
-                optimizer=optimizer,
-                tf_rate=tf_rate,
-                is_training=True,
-                max_label_len=params["model"]["speller"]["vocab_size"],
-                label_smoothing=params["training"]["label_smoothing"],
-                vocab_dict=train_dataset.char2idx,
-            )
-            if i % 100 == 0:
-                torch.cuda.empty_cache()
-            train_loss.append(batch_loss)
-            train_ler.extend(batch_ler)
-            global_step += 1
-            epoch_step += 1
-            # print(batch_ler)
-            writer.add_scalar("loss/train-step", batch_loss, global_step)
-            writer.add_scalar("ler/train-step", np.array([sum(train_ler) / len(train_ler)]), global_step)
-
-        train_loss = np.array([sum(train_loss) / len(train_loss)])
-        train_ler = np.array([sum(train_ler) / len(train_ler)])
-        writer.add_scalar("loss/train-epoch", train_loss, epoch)
-        writer.add_scalar("ler/train-epoch", train_ler, epoch)
-        # Validation
-        val_loss = []
-        val_ler = []
-        val_step = 0
-        for i, (data) in tqdm(enumerate(dev_loader), total=len(dev_loader), leave=False, desc="Validation"):
-            # print(
-            #     f"Current Epoch: {epoch} | Epoch step: {epoch_step}/{len(train_loader)} Validating step: {val_step}/{len(dev_loader)}",
-            #     end="\r",
-            #     flush=True,
-            # )
-
-            inputs = data[1]["inputs"].cuda()
-            labels = data[2]["targets"].cuda()
-
-            batch_loss, batch_ler = batch_iterator(
-                batch_data=inputs,
-                batch_label=labels,
-                las_model=las,
-                optimizer=optimizer,
-                tf_rate=tf_rate,
-                is_training=False,
-                max_label_len=params["model"]["speller"]["vocab_size"],
-                label_smoothing=params["training"]["label_smoothing"],
-                vocab_dict=dev_dataset.char2idx,
-            )
-            if i % 100 == 0:
-                torch.cuda.empty_cache()
-            val_loss.append(batch_loss)
-            val_ler.extend(batch_ler)
-            val_step += 1
-
-        val_loss = np.array([sum(val_loss) / len(val_loss)])
-        val_ler = np.array([sum(val_ler) / len(val_ler)])
-        writer.add_scalar("loss/dev", val_loss, epoch)
-        writer.add_scalar("ler/dev", val_ler, epoch)
-        # Checkpoint saving model each epoch and keeping only last 10 epochs
-        if params["training"]["checkpoint"]:
-            # Check if epoch-10 file exits, if so we delete it
-            file_path_old = os.path.join(params["training"]["save_folder"], f"{data_name}-epoch{epoch - 10}.pth.tar")
-            if os.path.exists(file_path_old):
-                os.remove(file_path_old)
-
-            file_path = os.path.join(params["training"]["save_folder"], f"{data_name}-epoch{epoch}.pth.tar")
-            torch.save(
-                las.serialize(optimizer=optimizer, epoch=epoch, tr_loss=val_loss, val_loss=val_loss), file_path,
-            )
-            print()
-            print("Saving checkpoint model to %s" % file_path)
-
-        if val_loss < best_cv_loss:  # We found a best model, lets save it too
-            file_path = os.path.join(params["training"]["save_folder"], f"{data_name}-BEST_LOSS-epoch{epoch}.pth.tar")
-            # purge(params["training"]["save_folder"], "*BEST_LOSS*")  # Remove
-            # previous best models
-            torch.save(
-                las.serialize(optimizer=optimizer, epoch=epoch, tr_loss=val_loss, val_loss=val_loss), file_path,
-            )
-            print("Saving BEST model to %s" % file_path)
-
-        # writer.add_scalars("cer", {"train": np.array([np.array(batch_ler).mean()])}, global_step)
-        # pdb.set_trace()
-        # print(inputs.size())
-        print()
+    args = parser.parse_args()
+    # ---------------------
+    # RUN TRAINING
+    # ---------------------
+    main(args)
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    main(args)
+    run_cli()

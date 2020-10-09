@@ -1,84 +1,121 @@
-## LAS-Pytorch
 
-This is my pytorch implementation for the [Listen, Attend and Spell](https://arxiv.org/abs/1508.01211v2) (LAS) google ASR deep learning model. I used both the mozilla [Common voice](https://voice.mozilla.org/en/datasets) dataset and the [LibriSpeech](https://www.openslr.org/12) dataset.
+---
 
-![LAS Network architecture](img/las.png)
+<div align="center">
 
-The feature transformation is done on the fly while loading the files thanks to torchaudio.
+# DeepSpeech-pytorch
+
+</div>
+
+End-to-end speech recognition model in PyTorch with DeepSpeech model
+
+## How to run
+First, install dependencies
+```bash
+# clone project
+git clone https://github.com/jiwidi/DeepSpeech-pytorch
+
+# install project
+cd DeepSpeech-pytorch
+pip install -e .
+pip install -r requirements.txt
+ ```
+Ready to run! execute:
+```python
+python train.py #Will run with default parameters and donwload the datasets in the local directory
+```
+
+Tensorboard logs will be saved under the `runs/` folder
+
+## The model
+The model is a variation of DeepSpeech 2 from the guys at [assemblyai](https://www.assemblyai.com/)
+
+```py
+DeepSpeech(
+  (cnn): Conv2d(1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+  (rescnn_layers): Sequential(
+    (0): ResidualCNN(
+      (cnn1): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (cnn2): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (dropout1): Dropout(p=0.1, inplace=False)
+      (dropout2): Dropout(p=0.1, inplace=False)
+      (layer_norm1): CNNLayerNorm(
+        (layer_norm): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+      )
+      (layer_norm2): CNNLayerNorm(
+        (layer_norm): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+    (1): ResidualCNN(
+      (cnn1): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (cnn2): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (dropout1): Dropout(p=0.1, inplace=False)
+      (dropout2): Dropout(p=0.1, inplace=False)
+      (layer_norm1): CNNLayerNorm(
+        (layer_norm): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+      )
+      (layer_norm2): CNNLayerNorm(
+        (layer_norm): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+  (fully_connected): Linear(in_features=2048, out_features=512, bias=True)
+  (birnn_layers): Sequential(
+    (0): BidirectionalGRU(
+      (BiGRU): GRU(512, 512, batch_first=True, bidirectional=True)
+      (layer_norm): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (1): BidirectionalGRU(
+      (BiGRU): GRU(1024, 512, bidirectional=True)
+      (layer_norm): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (2): BidirectionalGRU(
+      (BiGRU): GRU(1024, 512, bidirectional=True)
+      (layer_norm): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+  )
+  (classifier): Sequential(
+    (0): Linear(in_features=1024, out_features=512, bias=True)
+    (1): GELU()
+    (2): Dropout(p=0.1, inplace=False)
+    (3): Linear(in_features=512, out_features=29, bias=True)
+  )
+)
+Num Model Parameters 14233053
+```
+With the following architecture:
+![model_architecture](images/model_architecture.png)
 
 ## Results
+Results of training for 10 epochs show a great potencial. I would like to spend more time finetuning the model and training for longer epochs but I need to purchase cloud computing for that and is out of my scope right now.
 
-This are the LER (letter error rate) and loss metrics for 4 epochs of training with a considerably smaller architecture since my gpu didnt have enough memory. Listener had 128 neurons and 2 layers while the Speller had 256 neurons with 2 layers as well.
+Loss
+-----
 
-We can see how the model is able to learn from the data we are feeding to it but it still needs more training and a proper architecture.
-|  Letter error rate  |         Loss          |
-| :-----------------: | :-------------------: |
-| ![LER](img/ler.png) | ![LOSS](img/loss.png) |
+|        Training data        |          Test data           |
+| :-------------------------: | :--------------------------: |
+| ![tr](images/trainloss.png) | ![test](images/testloss.png) |
 
+Metrics on `test-clean`
+-----
 
-If we try to predict a sample of audio the results now look like:
+| Character error rate CER |  Word error rate WER   |
+| :----------------------: | :--------------------: |
+|  ![CER](images/cer.png)  | ![WER](images/wer.png) |
 
-`true_y`: ['A', 'N', 'D', '', 'S', 'T', 'I', 'L', 'L', '', 'N', 'O', '', 'A',
-       'T', 'T', 'E', 'M', 'P', 'T', '', 'B', 'Y', '', 'T', 'H', 'E', '',
-       'P', 'O']
+### Data pipeline
 
-`pred_y`:['A', 'N', 'D', '', 'T', 'H', 'E', 'L', 'L', '', 'T', 'O', 'T', 'M',
-       '', 'T', 'E', 'N', 'P', 'T', '', 'O', 'E', '', 'T', 'H', 'E', '',
-       'S', 'R']
+For testing the model we used the Librispeech dataset and performed a MelSpectogram followed by FrequencyMasking to mask out the frequency dimension, and TimeMasking for the time dimension.
 
-Only the conjunction are being properly indentified, this led us to think the model needs higher training times to be able to learn more specific words.
-
-#Will train more and update results here, still looking for credits in cloud compute
-
-## How to run it
-
-### Requirements
-Code is setup to run with both the mozilla [Common voice](https://voice.mozilla.org/en/datasets) dataset and the [LibriSpeech](https://www.openslr.org/12) dataset. If you want to run the code you should download the datasets and extract them under data/ or run the script `utils/download_data.py` which will download it and extract it in the following format:
-
-### Data
-```
-data
-├── LibriSpeech
-│   ├── BOOKS.TXT
-│   ├── CHAPTERS.TXT
-│   ├── dev-clean/
-│   ├── LICENSE.TXT
-│   ├── README.TXT
-│   ├── SPEAKERS.TXT
-│   ├── test-clean/
-│   └── train-clean-100/
-└── mozilla
-    ├── dev.tsv
-    ├── invalidated.tsv
-    ├── mp3/
-    ├── other.tsv
-    ├── test.tsv
-    ├── train.tsv
-    └──  validated.tsv
+```py
+train_audio_transforms = nn.Sequential(
+    torchaudio.transforms.MelSpectrogram(sample_rate=16000, n_mels=128),
+    torchaudio.transforms.FrequencyMasking(freq_mask_param=15),
+    torchaudio.transforms.TimeMasking(time_mask_param=35)
+)
 ```
 
-So run
-```
 
-#Remove flags if you want to avoid download that specific dataset
-$ python utils/download_data.py --libri --common
-```
-
-And run the following commands to process and collect all files.
-
-```
-#Still in utils/
-$ python utils/prepare_librispeech.py --root $ABSOLUTEPATH TO DATASET
-$ python uitls/prepare_common-voice.py --root $ABSOLUTEPATH TO DATASET
-```
-This will create a `processed/` folder inside each of the datassets containing the csvs with teh data neccesary to train along vocabulary and word count files.
-
-### Training
-Execute the train script along with the yaml config file for the desired dataset.
-```
-$ python train.py --config_path config/librispeech-config.yaml
-# Or
-$ python train.py --config_path config/common_voice-config.yaml
-```
-
-Loss and lert will be logged to the `runs/` folder, you can check them by running tensoboard in the root directory.
