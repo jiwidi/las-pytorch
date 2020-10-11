@@ -28,13 +28,15 @@ class Listener(nn.Module):
         self.embedding = nn.Embedding(input_feature_dim_listener, hidden_size_listener)
         # self.gru = nn.GRU(hidden_size, hidden_size)
         self.gru = nn.Sequential(
-            nn.GRU(hidden_size_listener, hidden_size_listener / 2),
-            *[
-                nn.GRU(
-                    hidden_size_listener / (2 * i), hidden_size_listener / (2 * (i + 1))
-                )
-                for _, i in enumerate(range(num_layers_listener - 1), 1)
-            ]
+            nn.Embedding(hidden_size_listener, hidden_size_listener),
+            # nn.GRU(hidden_size_listener, int(hidden_size_listener / 2)),
+            # *[
+            #     nn.GRU(
+            #         int(hidden_size_listener / (2 * i)),
+            #         int(hidden_size_listener / (2 * (i + 1))),
+            #     )
+            #     for _, i in enumerate(range(num_layers_listener - 1), 1)
+            # ]
         )
 
     def forward(self, input, hidden):
@@ -48,7 +50,7 @@ class Listener(nn.Module):
 
 
 class Speller(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=1400):
         super(Speller, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -83,10 +85,10 @@ class Speller(nn.Module):
         return output, hidden, attn_weights
 
     def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
+        return torch.zeros(1, 1, self.hidden_size)
 
 
-class LAS(LightningModule):
+class LAS(nn.Module):
     def __init__(
         self,
         input_feature_dim_listener,
@@ -112,11 +114,22 @@ class LAS(LightningModule):
         )
 
         self.criterion = nn.CTCLoss(blank=28)
-        self.example_input_array = torch.rand(8, 1, 128, 1151)
+        # self.example_input_array = torch.rand(8, 1, 128, 1151)
 
-    def forward(self, x):
+    def forward(self, batch_data, batch_label, teacher_force_rate, is_training=True):
         # visit https://colab.research.google.com/drive/1JwtoPGdLFI9aM2kXAkj-P8h-GvnXJieY#scrollTo=AoO-CiW6nl23
-        return x
+        listener_feature = self.listener(batch_data)
+        if is_training:
+            raw_pred_seq, attention_record = self.speller(
+                listener_feature,
+                ground_truth=batch_label,
+                teacher_force_rate=teacher_force_rate,
+            )
+        else:
+            raw_pred_seq, attention_record = self.speller(
+                listener_feature, ground_truth=None, teacher_force_rate=0
+            )
+        return raw_pred_seq, attention_record
 
     def serialize(self, optimizer, epoch, tr_loss, val_loss):
         package = {
@@ -369,12 +382,12 @@ class LAS(LightningModule):
         """
         parser = ArgumentParser(parents=[parent_parser])
 
-        parser.add_argument("--n_cnn_layers", default=3, type=int)
-        parser.add_argument("--n_rnn_layers", default=5, type=int)
-        parser.add_argument("--rnn_dim", default=512, type=int)
-        parser.add_argument("--n_class", default=29, type=int)
-        parser.add_argument("--n_feats", default=128, type=str)
-        parser.add_argument("--stride", default=2, type=int)
+        parser.add_argument("--input_feature_dim_listener", default=128, type=int)
+        parser.add_argument("--hidden_size_listener", default=128, type=int)
+        parser.add_argument("--num_layers_listener", default=2, type=int)
+        parser.add_argument("--input_feature_dim_speller", default=29, type=int)
+        parser.add_argument("--hidden_size_speller", default=256, type=str)
+        parser.add_argument("--num_layers_speller", default=2, type=int)
         parser.add_argument("--dropout", default=0.1, type=float)
 
         return parser
