@@ -125,7 +125,7 @@ def main(args):
                 optimizer=optimizer,
                 tf_rate=tf_rate,
                 is_training=True,
-                max_label_len=params["model"]["speller"]["vocab_size"],
+                max_label_len=params["model"]["speller"]["max_label_len"],
                 label_smoothing=params["training"]["label_smoothing"],
                 vocab_dict=train_dataset.char2idx,
             )
