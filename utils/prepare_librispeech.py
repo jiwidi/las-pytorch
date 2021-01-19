@@ -45,7 +45,7 @@ parser.add_argument(
 def main(args):
     root = args.root
     target_path = root + "/processed/"
-    train_path = ["train-clean-100/"]  # , "train-clean-360/", "train-other-500/"]
+    train_path = ["train-clean-100/" , "train-clean-360/", "train-other-500/"]
     dev_path = ["dev-clean/", "dev-other/"]
     test_clean_path = ["test-clean/"]
     test_other_path = ["test-other/"]

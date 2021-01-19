@@ -114,10 +114,9 @@ def main(args):
             tf_rate = tf_rate_upperbound - (tf_rate_upperbound - tf_rate_lowerbound) * min(
                 (float(global_step) / tf_decay_step), 1
             )
-            with torch.no_grad():
-                inputs = data[1]["inputs"].cuda()
-                labels = data[2]["targets"].cuda()
-
+            inputs = data[1]["inputs"].cuda()
+            labels = data[2]["targets"].cuda()
+            print(f"INPUT SHAPE {inputs.shape} LABELS SHAPE: {labels.shape}")
             batch_loss, batch_ler = batch_iterator(
                 batch_data=inputs,
                 batch_label=labels,
