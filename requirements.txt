@@ -7,4 +7,4 @@ pydub==0.24.0
 enlighten==1.5.1
 pandas==1.0.3
 tensorboard==2.1
-PyYAML==5.3.1
+PyYAML==5.4
